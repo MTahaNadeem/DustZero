@@ -1,137 +1,280 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.theme.GreenPrimary
+import com.example.ui.theme.RedError
 import com.example.viewmodel.MainViewModel
 
 @Composable
 fun CleaningScreen(viewModel: MainViewModel) {
     val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
+    val demoModeEnabled by viewModel.demoModeEnabled.collectAsStateWithLifecycle()
+    
+    var showStartDialog by remember { mutableStateOf(false) }
+    var showStopDialog by remember { mutableStateOf(false) }
+
+    val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .verticalScroll(scrollState)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Cleaning System",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.align(Alignment.Start)
-        )
+        // Header
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Cleaning System",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                text = "Manage and monitor the automatic cleaning mechanism",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        Text(
-            text = "Status: ${sensorData.cleaningState}",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
+        // Status Card
+        val isCleaning = sensorData.cleaningState != "IDLE" && sensorData.cleaningState != "OFFLINE"
+        val stateColor = if (isCleaning) MaterialTheme.colorScheme.secondary else GreenPrimary
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.CleaningServices,
+                    contentDescription = null,
+                    tint = stateColor,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "CLEANING",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = if (!sensorData.connected && !demoModeEnabled) "--" else if (isCleaning) "IN PROGRESS" else "READY",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = stateColor
+                )
+                
+                if (isCleaning) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "${sensorData.cleaningProgress}%",
+                        style = MaterialTheme.typography.displayLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Current State: ${sensorData.cleaningState}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (!sensorData.connected && !demoModeEnabled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Waiting for data",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No cleaning currently in progress",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Graphical representation of the panel and brush
-        Box(
-            modifier = Modifier
-                .width(200.dp)
-                .height(300.dp)
-                .background(Color(0xFF042F1C), RoundedCornerShape(12.dp))
-        ) {
-            // Brush
-            val progressHeight = (300 * (sensorData.cleaningProgress / 100f)).dp
-            
+        if (sensorData.connected || demoModeEnabled) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(24.dp)
-                    .offset(y = progressHeight - if (sensorData.cleaningProgress == 100) 24.dp else 0.dp)
-                    .background(Color(0xFF34A853), RoundedCornerShape(4.dp))
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Progress: ${sensorData.cleaningProgress}%", style = MaterialTheme.typography.titleMedium)
-        Text(text = "Steps: ${sensorData.cleaningSteps}", style = MaterialTheme.typography.bodyMedium)
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        if (sensorData.rainDetected) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .width(160.dp)
+                    .height(240.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Automatic cleaning blocked because rain is detected.",
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                // Brush animation
+                val progressHeight by animateFloatAsState(
+                    targetValue = 240f * (sensorData.cleaningProgress / 100f),
+                    animationSpec = tween(durationMillis = 500)
                 )
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(8.dp))
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Make sure the cleaning mechanism is clear before starting.",
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(16.dp)
+                        .offset(y = progressHeight.dp - if (sensorData.cleaningProgress >= 95) 16.dp else 0.dp)
+                        .background(stateColor, RoundedCornerShape(4.dp))
                 )
             }
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Rain blocked
+        if ((sensorData.connected || demoModeEnabled) && sensorData.rainDetected) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.secondaryContainer, RoundedCornerShape(12.dp))
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Rounded.WaterDrop, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "RAIN DETECTED",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Cleaning blocked to prevent smearing.",
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        
+        val canStart = (sensorData.connected || demoModeEnabled) && !isCleaning && !sensorData.rainDetected
+        val canStop = (sensorData.connected || demoModeEnabled) && isCleaning
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Button(
-                onClick = { viewModel.startCleaning() },
-                enabled = sensorData.connected && (sensorData.cleaningState == "IDLE" || sensorData.cleaningState == "READY") && !sensorData.rainDetected,
+                onClick = { showStartDialog = true },
+                enabled = canStart,
                 modifier = Modifier.weight(1f).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GreenPrimary,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("START CLEANING")
+                Text("START CLEANING", fontWeight = FontWeight.Bold)
             }
-            Spacer(modifier = Modifier.width(16.dp))
             Button(
-                onClick = { viewModel.stopCleaning() },
-                enabled = sensorData.connected && sensorData.cleaningState != "IDLE" && sensorData.cleaningState != "STOPPED" && sensorData.cleaningState != "READY",
+                onClick = { showStopDialog = true },
+                enabled = canStop,
                 modifier = Modifier.weight(1f).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = RedError,
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("STOP CLEANING")
+                Text("STOP", fontWeight = FontWeight.Bold)
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedButton(
             onClick = { viewModel.homeMotor() },
-            enabled = sensorData.connected,
-            modifier = Modifier.fillMaxWidth().height(56.dp)
+            enabled = (sensorData.connected || demoModeEnabled),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(16.dp)
         ) {
-            Text("HOME MOTOR")
+            Text("HOME MOTOR", fontWeight = FontWeight.Bold)
         }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+
+    if (showStartDialog) {
+        AlertDialog(
+            onDismissRequest = { showStartDialog = false },
+            title = { Text("Start Cleaning?") },
+            text = { Text("Are you sure you want to start the cleaning cycle? The system will sweep the panel automatically.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.startCleaning()
+                        showStartDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
+                ) {
+                    Text("Start Cleaning")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showStopDialog) {
+        AlertDialog(
+            onDismissRequest = { showStopDialog = false },
+            title = { Text("Stop Cleaning?") },
+            text = { Text("This will immediately stop the cleaning mechanism. It may be left in an intermediate position.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.stopCleaning()
+                        showStopDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RedError)
+                ) {
+                    Text("Stop")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
+

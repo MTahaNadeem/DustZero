@@ -1,29 +1,34 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.DeviceThermostat
-import androidx.compose.material.icons.filled.ElectricMeter
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.WbCloudy
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.theme.GreenPrimary
+import com.example.ui.theme.OrangeSunlight
+import com.example.ui.theme.RedError
 import com.example.viewmodel.MainViewModel
+import com.example.ui.components.MetricCard
+import com.example.ui.components.StatusCard
 
 @Composable
 fun DashboardScreen(viewModel: MainViewModel) {
@@ -37,8 +42,9 @@ fun DashboardScreen(viewModel: MainViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Top Header
         Row(
@@ -46,137 +52,144 @@ fun DashboardScreen(viewModel: MainViewModel) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "SolarClean AI",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Smart Solar Monitoring",
+                    text = "Smart Solar Panel Cleaning System",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .background(
-                            color = if (demoModeEnabled) Color(0xFF03A9F4) else if (sensorData.connected) Color(0xFF0F9D58) else Color(0xFFB3261E),
-                            shape = androidx.compose.foundation.shape.CircleShape
-                        )
-                )
-                Spacer(modifier = Modifier.width(6.dp))
+            val isOnline = sensorData.connected || demoModeEnabled
+            val statusDotColor by animateColorAsState(
+                targetValue = if (isOnline) GreenPrimary else RedError,
+                animationSpec = tween(500)
+            )
+            
+            Column(horizontalAlignment = Alignment.End) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(statusDotColor)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (demoModeEnabled) "DEMO ONLINE" else if (isOnline) "ESP32 ONLINE" else "ESP32 OFFLINE",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = statusDotColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (demoModeEnabled) "DEMO MODE" else if (sensorData.connected) "ONLINE" else "OFFLINE",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (demoModeEnabled) Color(0xFF03A9F4) else if (sensorData.connected) Color(0xFF0F9D58) else Color(0xFFB3261E)
+                    text = if (isOnline) "LIVE" else "No connection",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Divider()
-
         // Hero Status
-        val statusColor = when (panelStatus) {
-            "OPTIMAL" -> Color(0xFF0F9D58)
-            "POSSIBLE DUST", "LOW SUNLIGHT" -> Color(0xFFF2A900)
-            "RAIN DETECTED", "OFFLINE" -> Color(0xFFB3261E)
-            "CLEANING" -> Color(0xFF03A9F4)
-            else -> MaterialTheme.colorScheme.primary
-        }
-        val statusIcon = when (panelStatus) {
-            "OPTIMAL" -> Icons.Default.CheckCircle
-            "POSSIBLE DUST" -> Icons.Default.Warning
-            "LOW SUNLIGHT" -> Icons.Default.WbCloudy
-            "RAIN DETECTED" -> Icons.Default.Error
-            "CLEANING" -> Icons.Default.Info
-            "OFFLINE" -> Icons.Default.Error
-            else -> Icons.Default.Info
+        val (statusColor, statusIcon, statusDesc) = when (panelStatus) {
+            "OPTIMAL" -> Triple(GreenPrimary, Icons.Rounded.CheckCircle, "Strong sunlight detected. Panel is producing expected power.")
+            "POSSIBLE DUST", "LOW OUTPUT" -> Triple(OrangeSunlight, Icons.Rounded.Warning, "Power output is significantly below the configured clean-panel baseline.")
+            "CLEANING REQUIRED" -> Triple(OrangeSunlight, Icons.Rounded.CleaningServices, "Performance degraded. Cleaning is highly recommended.")
+            "LOW SUNLIGHT" -> Triple(Color(0xFF64748B), Icons.Rounded.WbCloudy, "Sunlight is too weak for performance baseline check.")
+            "RAIN DETECTED" -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.WaterDrop, "Rain detected. Automatic cleaning is blocked.")
+            "CLEANING" -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.Autorenew, "Cleaning mechanism is currently running.")
+            "OFFLINE" -> Triple(RedError, Icons.Rounded.ErrorOutline, "Waiting for ESP32 sensor data...")
+            "ERROR" -> Triple(RedError, Icons.Rounded.Error, "System fault detected. Check alerts.")
+            else -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.Info, "Status: $panelStatus")
         }
         
-        com.example.ui.components.StatusCard(
+        StatusCard(
             title = "Solar Panel Status",
             status = panelStatus,
             icon = statusIcon,
             color = statusColor,
-            description = when (panelStatus) {
-                "OPTIMAL" -> "Panel is producing expected power."
-                "POSSIBLE DUST" -> "Power output is significantly below the configured clean-panel baseline."
-                "LOW SUNLIGHT" -> "Sunlight is too weak for performance baseline check."
-                "RAIN DETECTED" -> "Rain detected. Automatic cleaning is blocked."
-                "CLEANING" -> "Cleaning mechanism is currently running."
-                "OFFLINE" -> "Waiting for ESP32 sensor data..."
-                else -> null
-            },
-            modifier = Modifier.fillMaxWidth()
+            description = statusDesc
         )
 
         // Metrics Grid
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            com.example.ui.components.MetricCard(
-                title = "Power",
-                value = if (sensorData.connected) sensorData.solarPower.toString() else "--",
+            MetricCard(
+                title = "Solar Power",
+                value = if (sensorData.connected || demoModeEnabled) String.format("%.2f", sensorData.solarPower) else "--",
                 unit = "W",
-                icon = Icons.Default.Bolt,
+                icon = Icons.Rounded.WbSunny,
+                iconTint = OrangeSunlight,
                 modifier = Modifier.weight(1f)
             )
-            com.example.ui.components.MetricCard(
+            MetricCard(
                 title = "Voltage",
-                value = if (sensorData.connected) sensorData.solarVoltage.toString() else "--",
+                value = if (sensorData.connected || demoModeEnabled) String.format("%.2f", sensorData.solarVoltage) else "--",
                 unit = "V",
-                icon = Icons.Default.ElectricMeter,
+                icon = Icons.Rounded.ElectricBolt,
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
         
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            com.example.ui.components.MetricCard(
+            MetricCard(
                 title = "Current",
-                value = if (sensorData.connected) sensorData.solarCurrent.toString() else "--",
+                value = if (sensorData.connected || demoModeEnabled) String.format("%.1f", sensorData.solarCurrent) else "--",
                 unit = "mA",
-                icon = Icons.Default.ElectricMeter,
+                icon = Icons.Rounded.BatteryChargingFull,
+                iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
-            com.example.ui.components.MetricCard(
-                title = "Temp",
-                value = if (sensorData.connected) sensorData.temperature.toString() else "--",
+            MetricCard(
+                title = "Temperature",
+                value = if (sensorData.connected || demoModeEnabled) String.format("%.1f", sensorData.temperature) else "--",
                 unit = "°C",
-                icon = Icons.Default.DeviceThermostat,
+                icon = Icons.Rounded.Thermostat,
+                iconTint = RedError,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Sunlight & Rain
-        com.example.ui.components.StatusCard(
-            title = "Sunlight",
-            status = if (sensorData.connected) sensorData.sunlightLevel else "--",
-            icon = Icons.Default.WbSunny,
-            color = Color(0xFFF2A900),
-            description = if (sensorData.connected) "LDR1: ${sensorData.ldr1}   LDR2: ${sensorData.ldr2}" else null,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        com.example.ui.components.StatusCard(
-            title = "Rain",
-            status = if (!sensorData.connected) "--" else if (sensorData.rainDetected) "RAIN DETECTED" else "NO RAIN",
-            icon = Icons.Default.WbCloudy,
-            color = if (!sensorData.connected) Color.Gray else if (sensorData.rainDetected) Color(0xFF03A9F4) else Color(0xFF0F9D58),
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Sunlight & Rain row
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            val isStrongSun = sensorData.sunlightLevel == "STRONG"
+            StatusCard(
+                title = "Sunlight",
+                status = if (sensorData.connected || demoModeEnabled) sensorData.sunlightLevel else "--",
+                icon = if (isStrongSun) Icons.Rounded.WbSunny else Icons.Rounded.CloudQueue,
+                color = if (isStrongSun) OrangeSunlight else Color(0xFF64748B),
+                description = if (sensorData.connected || demoModeEnabled) "LDR1: ${sensorData.ldr1}\nLDR2: ${sensorData.ldr2}" else "No data",
+                modifier = Modifier.weight(1f)
+            )
+            
+            val isRain = sensorData.rainDetected
+            StatusCard(
+                title = "Rain",
+                status = if (!sensorData.connected && !demoModeEnabled) "--" else if (isRain) "DETECTED" else "NO RAIN",
+                icon = if (isRain) Icons.Rounded.WaterDrop else Icons.Rounded.WbSunny,
+                color = if (!sensorData.connected && !demoModeEnabled) Color.Gray else if (isRain) MaterialTheme.colorScheme.secondary else GreenPrimary,
+                description = if (!sensorData.connected && !demoModeEnabled) "No data" else if (isRain) "Cleaning blocked" else "Safe for cleaning",
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-        // Cleaning Status
-        com.example.ui.components.StatusCard(
-            title = "Cleaning",
-            status = sensorData.cleaningState,
-            icon = Icons.Default.Info,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.fillMaxWidth()
+        // Quick Cleaning Status
+        val isCleaning = sensorData.cleaningState != "IDLE" && sensorData.cleaningState != "OFFLINE"
+        StatusCard(
+            title = "Cleaning Mechanism",
+            status = if (!sensorData.connected && !demoModeEnabled) "--" else if (isCleaning) "IN PROGRESS" else "READY",
+            icon = Icons.Rounded.CleaningServices,
+            color = if (isCleaning) MaterialTheme.colorScheme.secondary else GreenPrimary,
+            description = if (isCleaning) "${sensorData.cleaningState} - ${sensorData.cleaningProgress}%" else "No cleaning currently in progress"
         )
 
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
+

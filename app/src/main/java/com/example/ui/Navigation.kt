@@ -2,15 +2,17 @@ package com.example.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Analytics
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.Dashboard
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -34,7 +36,10 @@ fun AppNavigation(viewModel: MainViewModel) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
                 NavigationBarItem(
                     selected = currentRoute == "dashboard",
                     onClick = {
@@ -44,8 +49,15 @@ fun AppNavigation(viewModel: MainViewModel) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
-                    label = { Text("Dashboard") }
+                    icon = { Icon(Icons.Rounded.Dashboard, contentDescription = "Dashboard") },
+                    label = { Text("Dashboard") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = currentRoute == "analytics",
@@ -56,8 +68,15 @@ fun AppNavigation(viewModel: MainViewModel) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Default.Analytics, contentDescription = "Analytics") },
-                    label = { Text("Analytics") }
+                    icon = { Icon(Icons.Rounded.Analytics, contentDescription = "Analytics") },
+                    label = { Text("Analytics") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = currentRoute == "cleaning",
@@ -68,8 +87,15 @@ fun AppNavigation(viewModel: MainViewModel) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Default.CleaningServices, contentDescription = "Cleaning") },
-                    label = { Text("Cleaning") }
+                    icon = { Icon(Icons.Rounded.CleaningServices, contentDescription = "Cleaning") },
+                    label = { Text("Cleaning") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = currentRoute == "alerts",
@@ -84,14 +110,21 @@ fun AppNavigation(viewModel: MainViewModel) {
                         BadgedBox(
                             badge = {
                                 if (unreadAlertsCount > 0) {
-                                    Badge { Text(unreadAlertsCount.toString()) }
+                                    Badge(containerColor = MaterialTheme.colorScheme.error) { Text(unreadAlertsCount.toString(), color = Color.White) }
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Notifications, contentDescription = "Alerts") 
+                            Icon(Icons.Rounded.Notifications, contentDescription = "Alerts") 
                         }
                     },
-                    label = { Text("Alerts") }
+                    label = { Text("Alerts") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = currentRoute == "settings",
@@ -102,8 +135,15 @@ fun AppNavigation(viewModel: MainViewModel) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Settings") },
-                    label = { Text("Settings") }
+                    icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
+                    label = { Text("Settings") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
             }
         }
@@ -121,3 +161,4 @@ fun AppNavigation(viewModel: MainViewModel) {
         }
     }
 }
+

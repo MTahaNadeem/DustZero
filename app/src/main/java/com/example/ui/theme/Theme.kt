@@ -11,40 +11,67 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
+val NavyDark = Color(0xFF0A1128)
+val NavyLight = Color(0xFF1E293B)
+val GreenPrimary = Color(0xFF10B981)
+val BlueAccent = Color(0xFF3B82F6)
+val OffWhite = Color(0xFFF8FAFC)
+val CardWhite = Color(0xFFFFFFFF)
+val OrangeSunlight = Color(0xFFF59E0B)
+val RedError = Color(0xFFEF4444)
+
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF0F9D58),
+    primary = GreenPrimary,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE8F5E9),
-    onPrimaryContainer = Color(0xFF042F1C),
-    secondary = Color(0xFF03A9F4),
+    primaryContainer = Color(0xFFD1FAE5),
+    onPrimaryContainer = NavyDark,
+    secondary = BlueAccent,
     onSecondary = Color.White,
-    error = Color(0xFFB3261E),
+    secondaryContainer = Color(0xFFDBEAFE),
+    onSecondaryContainer = NavyDark,
+    tertiary = OrangeSunlight,
+    onTertiary = Color.White,
+    error = RedError,
     onError = Color.White,
-    background = Color(0xFFF8F9FA),
-    onBackground = Color(0xFF1F1F1F),
-    surface = Color.White,
-    onSurface = Color(0xFF1F1F1F),
+    errorContainer = Color(0xFFFEE2E2),
+    onErrorContainer = Color(0xFF991B1B),
+    background = OffWhite,
+    onBackground = NavyDark,
+    surface = CardWhite,
+    onSurface = NavyDark,
+    surfaceVariant = Color(0xFFF1F5F9),
+    onSurfaceVariant = NavyLight,
+    outline = Color(0xFFCBD5E1)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFF34A853),
-    onPrimary = Color(0xFF042F1C),
-    primaryContainer = Color(0xFF0F522E),
-    onPrimaryContainer = Color(0xFFE8F5E9),
-    secondary = Color(0xFF03A9F4),
-    onSecondary = Color.White,
-    error = Color(0xFFF2B8B5),
-    onError = Color(0xFF601410),
-    background = Color(0xFF121212),
-    onBackground = Color(0xFFE3E3E3),
-    surface = Color(0xFF1E1E1E),
-    onSurface = Color(0xFFE3E3E3),
+    primary = GreenPrimary,
+    onPrimary = NavyDark,
+    primaryContainer = Color(0xFF065F46),
+    onPrimaryContainer = Color(0xFFD1FAE5),
+    secondary = BlueAccent,
+    onSecondary = NavyDark,
+    secondaryContainer = Color(0xFF1E40AF),
+    onSecondaryContainer = Color(0xFFDBEAFE),
+    tertiary = OrangeSunlight,
+    onTertiary = NavyDark,
+    error = Color(0xFFF87171),
+    onError = NavyDark,
+    errorContainer = Color(0xFF991B1B),
+    onErrorContainer = Color(0xFFFEE2E2),
+    background = Color(0xFF0F172A),
+    onBackground = Color(0xFFF8FAFC),
+    surface = Color(0xFF1E293B),
+    onSurface = Color(0xFFF8FAFC),
+    surfaceVariant = Color(0xFF334155),
+    onSurfaceVariant = Color(0xFFCBD5E1),
+    outline = Color(0xFF64748B)
 )
 
 @Composable
 fun AppTheme(
     useDarkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Disable dynamic colors for a consistent premium brand look
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -58,6 +85,7 @@ fun AppTheme(
 
     MaterialTheme(
         colorScheme = colors,
+        typography = Typography,
         content = content
     )
 }
