@@ -188,6 +188,41 @@ fun DashboardScreen(viewModel: MainViewModel) {
             color = if (isCleaning) MaterialTheme.colorScheme.secondary else GreenPrimary,
             description = if (isCleaning) "${sensorData.cleaningState} - ${sensorData.cleaningProgress}%" else "No cleaning currently in progress"
         )
+        
+        val canStart = (sensorData.connected || demoModeEnabled) && !isCleaning && !sensorData.rainDetected
+        val canStop = (sensorData.connected || demoModeEnabled) && isCleaning
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Button(
+                onClick = { viewModel.startCleaning() },
+                enabled = canStart,
+                modifier = Modifier.weight(1f).height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = GreenPrimary,
+                    contentColor = Color.White
+                ),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            ) {
+                Text("START CLEANING", fontWeight = FontWeight.Bold)
+            }
+            if (isCleaning) {
+                Button(
+                    onClick = { viewModel.stopCleaning() },
+                    enabled = canStop,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RedError,
+                        contentColor = Color.White
+                    ),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                ) {
+                    Text("STOP", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
     }
