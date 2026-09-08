@@ -7,6 +7,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -99,6 +100,9 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.vico.compose)
+  implementation(libs.supabase.postgrest)
+  implementation(libs.supabase.realtime)
+  implementation(libs.ktor.client.android)
   // implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)

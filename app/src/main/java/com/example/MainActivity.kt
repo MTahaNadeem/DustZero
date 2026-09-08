@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.example.data.AppDatabase
 import com.example.iot.DemoIotService
+import com.example.iot.SupabaseIotService
 import com.example.ui.AppNavigation
 import com.example.ui.theme.AppTheme
 import com.example.viewmodel.MainViewModel
@@ -20,14 +21,15 @@ class MainActivity : ComponentActivity() {
     
     val database = AppDatabase.getDatabase(this)
     val dao = database.appDao()
-    val iotService = DemoIotService(dao)
     
-    // Create view model manually for simplicity
+    // Create Demo service as fallback
+    val demoService = DemoIotService(dao)
+    
+    // Create Supabase service wrapping demo service
+    val iotService = SupabaseIotService(demoService)
+    
     val viewModel = MainViewModel(iotService, dao)
     
-    // Start with demo scenario
-    iotService.setDemoScenario("NORMAL")
-
     setContent {
       AppTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
