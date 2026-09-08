@@ -14,6 +14,12 @@ import com.example.ui.AppNavigation
 import com.example.ui.theme.AppTheme
 import com.example.viewmodel.MainViewModel
 
+import com.example.data.ThemePreferences
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.example.data.ThemeMode
+
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -28,10 +34,20 @@ class MainActivity : ComponentActivity() {
     // Create Supabase service wrapping demo service
     val iotService = SupabaseIotService(demoService)
     
-    val viewModel = MainViewModel(iotService, dao)
+    val themePreferences = ThemePreferences(this)
+    
+    val viewModel = MainViewModel(iotService, dao, themePreferences)
     
     setContent {
-      AppTheme {
+      val currentThemeMode by themePreferences.themeMode.collectAsState()
+      
+      val useDarkTheme = when (currentThemeMode) {
+          ThemeMode.LIGHT -> false
+          ThemeMode.DARK -> true
+          ThemeMode.SYSTEM -> isSystemInDarkTheme()
+      }
+      
+      AppTheme(useDarkTheme = useDarkTheme) {
         Surface(modifier = Modifier.fillMaxSize()) {
             AppNavigation(viewModel = viewModel)
         }

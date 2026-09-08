@@ -52,9 +52,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
 
         SettingsSection(title = "DEVICE") {
-            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "SolarClean Controller")
+            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "DustZero Controller")
             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "solarclean-001")
+            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "dustzero-001")
             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.Memory, label = "Firmware Version", value = "v1.2.4")
         }
@@ -69,6 +69,50 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.Timer, label = "Cleaning Cooldown", value = "24 hours")
+        }
+        
+        SettingsSection(title = "APPEARANCE") {
+            val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Rounded.Palette,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(text = "Theme", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(text = "Choose how DustZero looks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SegmentedButton(
+                        selected = currentTheme == com.example.data.ThemeMode.LIGHT,
+                        onClick = { viewModel.setThemeMode(com.example.data.ThemeMode.LIGHT) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
+                    ) {
+                        Text("Light")
+                    }
+                    SegmentedButton(
+                        selected = currentTheme == com.example.data.ThemeMode.DARK,
+                        onClick = { viewModel.setThemeMode(com.example.data.ThemeMode.DARK) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
+                    ) {
+                        Text("Dark")
+                    }
+                    SegmentedButton(
+                        selected = currentTheme == com.example.data.ThemeMode.SYSTEM,
+                        onClick = { viewModel.setThemeMode(com.example.data.ThemeMode.SYSTEM) },
+                        shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
+                    ) {
+                        Text("System")
+                    }
+                }
+            }
         }
         
         SettingsSection(title = "NOTIFICATIONS") {
@@ -118,7 +162,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
         
         SettingsSection(title = "APP") {
-            SettingRowInfo(icon = Icons.Rounded.Info, label = "About SolarClean AI", value = "")
+            SettingRowInfo(icon = Icons.Rounded.Info, label = "About DustZero", value = "")
             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = "1.0.0")
         }

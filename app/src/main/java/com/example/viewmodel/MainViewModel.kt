@@ -12,8 +12,15 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val iotService: IotService,
-    private val dao: AppDao
+    private val dao: AppDao,
+    private val themePreferences: com.example.data.ThemePreferences
 ) : ViewModel() {
+
+    val themeMode = themePreferences.themeMode
+
+    fun setThemeMode(mode: com.example.data.ThemeMode) {
+        themePreferences.setThemeMode(mode)
+    }
 
     val sensorData = iotService.sensorData
     val demoModeEnabled = iotService.demoModeEnabled

@@ -54,7 +54,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "SolarClean AI",
+                    text = "DustZero",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onBackground
                 )

@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "SolarClean AI"
+rootProject.name = "DustZero"
 
 include(":app")
