@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.dustzero.app"
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.solarclean.xrpfm"
+    applicationId = "com.dustzero.app"
     minSdk = 24
     targetSdk = 36
     versionCode = 1
@@ -33,7 +33,11 @@ android {
       keyPassword = System.getenv("KEY_PASSWORD")
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
+      // Use local debug.keystore if present; otherwise fall back to the default
+      // Android SDK debug keystore (~/.android/debug.keystore).
+      val localKeystore = file("${rootDir}/debug.keystore")
+      val defaultKeystore = file("${System.getProperty("user.home")}/.android/debug.keystore")
+      storeFile = if (localKeystore.exists()) localKeystore else defaultKeystore
       storePassword = "android"
       keyAlias = "androiddebugkey"
       keyPassword = "android"
