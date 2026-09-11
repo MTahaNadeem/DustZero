@@ -7,7 +7,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dustzero.app.models.AppConstants
 import com.dustzero.app.ui.theme.DangerRed
 import com.dustzero.app.ui.theme.PrimaryGreen
 import com.dustzero.app.ui.theme.WarningAmber
@@ -32,12 +32,13 @@ fun DashboardScreen(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
     val panelStatus by viewModel.panelStatus.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isDeviceOnline.collectAsStateWithLifecycle()
+    val hasFault by viewModel.hasFault.collectAsStateWithLifecycle()
 
     // Derive display values from live sensor data
-    val isConnected = sensorData.connected
-    val isCleaning = sensorData.cleaningState != "IDLE"
-            && sensorData.cleaningState != "READY"
-            && sensorData.cleaningState != "OFFLINE"
+    val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
+    val canStart = isOnline && !isCleaning && !sensorData.rainDetected && !hasFault
+    val canStop = isOnline && isCleaning
 
     val heroColor = when (panelStatus) {
         "OPTIMAL" -> PrimaryGreen
@@ -45,6 +46,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
         "POSSIBLE DUST" -> WarningAmber
         "RAIN DETECTED" -> MaterialTheme.colorScheme.secondary
         "LOW SUNLIGHT" -> WarningAmber
+        "FAULT" -> DangerRed
         else -> DangerRed // OFFLINE
     }
     val heroIcon = when (panelStatus) {
@@ -53,15 +55,17 @@ fun DashboardScreen(viewModel: MainViewModel) {
         "POSSIBLE DUST" -> Icons.Rounded.Warning
         "RAIN DETECTED" -> Icons.Rounded.CloudQueue
         "LOW SUNLIGHT" -> Icons.Rounded.WbCloudy
+        "FAULT" -> Icons.Rounded.Error
         else -> Icons.Rounded.CloudOff
     }
     val heroDescription = when (panelStatus) {
         "OPTIMAL" -> "Strong sunlight detected. Panel performance is ideal."
-        "CLEANING" -> "Cleaning cycle is currently active."
+        "CLEANING" -> "Cleaning cycle is currently active — ${AppConstants.cleaningStateLabel(sensorData.cleaningState)}."
         "POSSIBLE DUST" -> "Power output below baseline — dust accumulation likely."
         "RAIN DETECTED" -> "Rain detected. Cleaning is temporarily blocked."
         "LOW SUNLIGHT" -> "Insufficient sunlight for accurate performance reading."
-        else -> "Device is offline. Check Wi-Fi and cloud connection."
+        "FAULT" -> "Hardware fault reported. Manual inspection required."
+        else -> "Device offline. Check Wi-Fi and cloud connection."
     }
 
     val sunlightStatus = sensorData.sunlightLevel.ifBlank { if (sensorData.sunDetected) "DETECTED" else "LOW" }
@@ -69,9 +73,6 @@ fun DashboardScreen(viewModel: MainViewModel) {
     val rainColor = if (sensorData.rainDetected) DangerRed else PrimaryGreen
     val ldrDescription = "LDR1: ${sensorData.ldr1}\nLDR2: ${sensorData.ldr2}"
     val rainDescription = if (sensorData.rainDetected) "Cleaning blocked" else "Safe for cleaning"
-
-    val canStart = isConnected && !isCleaning && !sensorData.rainDetected
-    val canStop = isConnected && isCleaning
 
     Column(
         modifier = Modifier
@@ -99,18 +100,56 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(if (isConnected) PrimaryGreen else DangerRed)
+                        .background(if (isOnline) PrimaryGreen else DangerRed)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isConnected) "Connected · ESP32-S3-001" else "Device Offline",
+                    text = if (isOnline) "Connected · ESP32-S3-001" else "Device Offline",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isConnected)
+                    color = if (isOnline)
                         MaterialTheme.colorScheme.onSurfaceVariant
                     else
                         DangerRed
                 )
+            }
+        }
+
+        // ── Fault Banner (only shown when fault == true) ─────────────────────
+        if (hasFault) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.1f)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DangerRed.copy(alpha = 0.4f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Error,
+                        contentDescription = "Fault",
+                        tint = DangerRed,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "SYSTEM FAULT",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = DangerRed
+                        )
+                        Text(
+                            text = "ESP32 reported a hardware fault. Manual inspection required.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
             }
         }
 
@@ -169,11 +208,11 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
         }
 
-        // ── Environment — Sunlight & Rain (equal-height cards) ───────────────
+        // ── Environment — Sunlight & Rain (equal-height via IntrinsicSize.Min) ─
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min), // <-- makes both cards the same height
+                .height(IntrinsicSize.Min),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             StatusCard(
@@ -216,13 +255,10 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // START — filled green, disabled when cleaning/offline
                     Button(
                         onClick = { viewModel.startCleaning() },
                         enabled = canStart,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
+                        modifier = Modifier.weight(1f).height(56.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PrimaryGreen,
                             contentColor = Color.White,
@@ -233,13 +269,10 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     ) {
                         Text("START", fontWeight = FontWeight.Bold)
                     }
-                    // STOP — filled red when active, visually muted when inactive
                     Button(
                         onClick = { viewModel.stopCleaning() },
                         enabled = canStop,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
+                        modifier = Modifier.weight(1f).height(56.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = DangerRed,
                             contentColor = Color.White,
@@ -254,7 +287,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = if (isCleaning)
-                        "Status: ${sensorData.cleaningState}"
+                        AppConstants.cleaningStateLabel(sensorData.cleaningState)
                     else
                         "System Ready",
                     style = MaterialTheme.typography.bodySmall,

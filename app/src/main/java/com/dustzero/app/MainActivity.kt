@@ -31,8 +31,8 @@ class MainActivity : ComponentActivity() {
     // Create Demo service as fallback
     val demoService = DemoIotService(dao)
     
-    // Create Supabase service wrapping demo service
-    val iotService = SupabaseIotService(demoService)
+    // Create Supabase service wrapping demo service; dao is needed for local alert generation
+    val iotService = SupabaseIotService(demoService, dao)
     
     val themePreferences = ThemePreferences(this)
     

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dustzero.app.models.AppConstants
 import com.dustzero.app.ui.theme.DangerRed
 import com.dustzero.app.ui.theme.PrimaryGreen
 import com.dustzero.app.ui.theme.WarningAmber
@@ -32,27 +33,32 @@ import com.dustzero.app.viewmodel.MainViewModel
 fun CleaningScreen(viewModel: MainViewModel) {
     val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
     val demoModeEnabled by viewModel.demoModeEnabled.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isDeviceOnline.collectAsStateWithLifecycle()
+    val hasFault by viewModel.hasFault.collectAsStateWithLifecycle()
 
     var showStartDialog by remember { mutableStateOf(false) }
     var showStopDialog by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
-    val isCleaning = sensorData.cleaningState != "IDLE"
-            && sensorData.cleaningState != "READY"
-            && sensorData.cleaningState != "OFFLINE"
-            && sensorData.cleaningState.isNotBlank()
+    // Use AppConstants.isActivelyCleaning() to match exact ESP32 schema state values:
+    // MOVING_DOWN | PAUSE_BOTTOM | MOVING_UP (not "READY", "STOPPED", or space-separated strings)
+    val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
 
-    val isOffline = !sensorData.connected && !demoModeEnabled
+    // Device is offline when NOT online AND not in demo mode
+    val isOffline = !isOnline && !demoModeEnabled
 
     val stateColor = when {
+        hasFault -> DangerRed
         isOffline -> MaterialTheme.colorScheme.onSurfaceVariant
         isCleaning -> MaterialTheme.colorScheme.secondary
         else -> PrimaryGreen
     }
 
-    val canStart = (sensorData.connected || demoModeEnabled) && !isCleaning && !sensorData.rainDetected
-    val canStop = (sensorData.connected || demoModeEnabled) && isCleaning
+    // Start: requires online (or demo), not already cleaning, no rain, no fault
+    val canStart = (isOnline || demoModeEnabled) && !isCleaning && !sensorData.rainDetected && !hasFault
+    // Stop: requires online (or demo) and an active cleaning cycle
+    val canStop = (isOnline || demoModeEnabled) && isCleaning
 
     val progressFloat = if (isCleaning) sensorData.cleaningProgress / 100f else 0f
     val animatedProgress by animateFloatAsState(targetValue = progressFloat, animationSpec = tween(600), label = "progress")
@@ -159,14 +165,14 @@ fun CleaningScreen(viewModel: MainViewModel) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            // Phase label + percentage on same row
+                            // Phase label (human-readable) + percentage on same row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = sensorData.cleaningState,
+                                    text = AppConstants.cleaningStateLabel(sensorData.cleaningState),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = stateColor

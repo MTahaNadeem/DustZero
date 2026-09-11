@@ -15,6 +15,18 @@ The Android app **never directly controls ESP32 GPIOs**. All communication goes 
 
 ---
 
+## Current Schema Limitations
+
+> These are **intentional** constraints of the v1 schema — not bugs. Each can be added in a future migration without rewriting the service layer.
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **`alerts` table** | ❌ Not in schema | Alerts are generated **client-side** in `SupabaseIotService` by watching Realtime state changes (rain, fault, offline, cleaning completed) and inserting into the local Room database. To replace: add a `device_alerts` table, subscribe to it, and remove `generateAlertsForStateChange()` from the service. |
+| **`device_history` table** | ❌ Not in schema | Analytics charts (24H/7D/30D) use **static mock data**. The service layer is structured so a `HistoryService` can be added later to query a time-series table without touching existing screens. |
+| **Online detection** | ⚠ Heartbeat-based | The app does **not** rely solely on `devices.connected`. It also checks that `devices.updated_at` was within the last 30 seconds. If the ESP32 crashes without clearing `connected`, the app will show "Offline" within 30s automatically. |
+
+---
+
 ## Requirements
 
 | Tool | Version |

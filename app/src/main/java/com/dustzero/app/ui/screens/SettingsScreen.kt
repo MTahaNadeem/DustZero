@@ -182,7 +182,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Trigger Scenario", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.height(12.dp))
-                    val scenarios = listOf("NORMAL", "DUST", "CLOUDY", "RAIN", "OFFLINE")
+                    val scenarios = listOf("NORMAL", "DUST", "CLOUDY", "RAIN", "FAULT", "OFFLINE")
                     scenarios.forEach { scenario ->
                         OutlinedButton(
                             onClick = { viewModel.setDemoScenario(scenario) },
