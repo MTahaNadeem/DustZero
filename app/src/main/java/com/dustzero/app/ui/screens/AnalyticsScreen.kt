@@ -16,6 +16,7 @@ import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
 import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.core.entry.entriesOf
 import com.patrykandpatrick.vico.core.entry.entryModelOf
 
 @Composable
@@ -23,22 +24,31 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
     
     var selectedRange by remember { mutableIntStateOf(0) }
-    val ranges = listOf("24 Hours", "7 Days", "30 Days")
+    val ranges = listOf("24H", "7D", "30D")
 
-    // Demonstration chart data — will be replaced with real Supabase historical queries
     val powerChartEntryModel = remember(selectedRange) { 
         when (selectedRange) {
-            1 -> entryModelOf(0.12, 0.11, 0.11, 0.09, 0.07, 0.06, 0.11)
-            2 -> entryModelOf(0.12, 0.10, 0.11, 0.08, 0.09, 0.07, 0.10, 0.12, 0.11, 0.09)
-            else -> entryModelOf(0.12, 0.11, 0.13, 0.09, 0.07, 0.06, 0.11, 0.12)
+            1 -> entryModelOf(0.12f, 0.11f, 0.11f, 0.09f, 0.07f, 0.06f, 0.11f)
+            2 -> entryModelOf(0.12f, 0.10f, 0.11f, 0.08f, 0.09f, 0.07f, 0.10f, 0.12f, 0.11f, 0.09f)
+            else -> entryModelOf(0.12f, 0.11f, 0.13f, 0.09f, 0.07f, 0.06f, 0.11f, 0.12f)
         }
     }
     
-    val tempChartEntryModel = remember(selectedRange) { 
+    // Panel Temperature vs. Voltage (Series 1: Temp, Series 2: Voltage * 40 for scale)
+    val dualChartEntryModel = remember(selectedRange) { 
         when (selectedRange) {
-            1 -> entryModelOf(32.1, 34.5, 36.2, 38.1, 37.5, 36.0, 35.2)
-            2 -> entryModelOf(32.1, 33.5, 36.2, 35.1, 37.5, 36.0, 34.2, 33.1, 36.5, 38.1)
-            else -> entryModelOf(32.1, 34.5, 35.2, 38.1, 37.5, 36.0, 35.2, 34.5)
+            1 -> entryModelOf(
+                entriesOf(32.1f, 34.5f, 36.2f, 38.1f, 37.5f, 36.0f, 35.2f),
+                entriesOf(0.85f*40, 0.86f*40, 0.82f*40, 0.80f*40, 0.81f*40, 0.84f*40, 0.85f*40)
+            )
+            2 -> entryModelOf(
+                entriesOf(32.1f, 33.5f, 36.2f, 35.1f, 37.5f, 36.0f, 34.2f, 33.1f, 36.5f, 38.1f),
+                entriesOf(0.85f*40, 0.84f*40, 0.82f*40, 0.83f*40, 0.81f*40, 0.84f*40, 0.85f*40, 0.86f*40, 0.82f*40, 0.80f*40)
+            )
+            else -> entryModelOf(
+                entriesOf(32.1f, 34.5f, 35.2f, 38.1f, 37.5f, 36.0f, 35.2f, 34.5f),
+                entriesOf(0.85f*40, 0.82f*40, 0.84f*40, 0.80f*40, 0.81f*40, 0.83f*40, 0.84f*40, 0.85f*40)
+            )
         }
     }
 
@@ -76,43 +86,16 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
             }
         }
         
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Average Power", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("0.10 W", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-            }
-            Card(
-                modifier = Modifier.weight(1f),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Cleanings", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(if (selectedRange == 0) "2" else if (selectedRange == 1) "14" else "61", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-        
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "SOLAR POWER HISTORY",
+                    text = "SOLAR POWER OUTPUT",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
@@ -121,8 +104,8 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                 Chart(
                     chart = lineChart(),
                     model = powerChartEntryModel,
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
+                    startAxis = rememberStartAxis(guideline = null),
+                    bottomAxis = rememberBottomAxis(guideline = null),
                     modifier = Modifier.height(220.dp)
                 )
             }
@@ -132,12 +115,12 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             shape = RoundedCornerShape(20.dp),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
-                    text = "TEMPERATURE HISTORY",
+                    text = "PANEL TEMPERATURE VS. VOLTAGE",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Bold
@@ -145,9 +128,9 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Chart(
                     chart = lineChart(),
-                    model = tempChartEntryModel,
-                    startAxis = rememberStartAxis(),
-                    bottomAxis = rememberBottomAxis(),
+                    model = dualChartEntryModel,
+                    startAxis = rememberStartAxis(guideline = null),
+                    bottomAxis = rememberBottomAxis(guideline = null),
                     modifier = Modifier.height(220.dp)
                 )
             }

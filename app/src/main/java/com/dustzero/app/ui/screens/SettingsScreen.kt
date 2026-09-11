@@ -6,19 +6,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.data.ThemeMode
-import com.dustzero.app.models.AppConstants
+import com.dustzero.app.ui.theme.EmeraldGreen
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -26,10 +28,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val demoModeEnabled by viewModel.demoModeEnabled.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
     
-    // Local UI state for toggles (will be connected to ViewModel/Supabase in a future update)
+    // Local UI state for settings (mock)
     var autoCleaning by remember { mutableStateOf(true) }
     var pushAlerts by remember { mutableStateOf(true) }
     var offlineAlerts by remember { mutableStateOf(false) }
+
+    var cleaningCooldown by remember { mutableStateOf("30") }
+    var cleaningDistance by remember { mutableStateOf("500") }
+    
+    var sunlightThreshold by remember { mutableStateOf("200") }
+    var powerBaseline by remember { mutableStateOf("0.05") }
 
     Column(
         modifier = Modifier
@@ -54,14 +62,30 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
 
         SettingsSection(title = "DEVICE") {
-            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = AppConstants.DEVICE_NAME)
+            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "Antigravity Solar Cleaner 01")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = AppConstants.DEVICE_ID)
+            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "solarclean-001")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.Memory, label = "Firmware Version", value = "v1.2.4")
+            SettingRowInfo(icon = Icons.Rounded.Memory, label = "Firmware Version", value = "1.0.0")
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                OutlinedButton(
+                    onClick = { /* Refresh connection logic */ },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Refresh Connection", fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
-        SettingsSection(title = "CLEANING CONFIGURATION") {
+        SettingsSection(title = "CLEANING CONFIGURATIONS") {
             SettingRowSwitch(
                 icon = Icons.Rounded.Autorenew,
                 label = "Automatic Cleaning",
@@ -70,9 +94,37 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 onCheckedChange = { autoCleaning = it }
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.Timer, label = "Cleaning Cooldown", value = "24 hours")
+            SettingRowInput(
+                icon = Icons.Rounded.Timer,
+                label = "Cleaning Cooldown (mins)",
+                value = cleaningCooldown,
+                onValueChange = { cleaningCooldown = it }
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            SettingRowInput(
+                icon = Icons.Rounded.Straighten,
+                label = "Cleaning Distance (steps)",
+                value = cleaningDistance,
+                onValueChange = { cleaningDistance = it }
+            )
         }
         
+        SettingsSection(title = "THRESHOLDS") {
+            SettingRowInput(
+                icon = Icons.Rounded.WbSunny,
+                label = "Sunlight Threshold",
+                value = sunlightThreshold,
+                onValueChange = { sunlightThreshold = it }
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            SettingRowInput(
+                icon = Icons.Rounded.ElectricBolt,
+                label = "Power Baseline Threshold",
+                value = powerBaseline,
+                onValueChange = { powerBaseline = it }
+            )
+        }
+
         SettingsSection(title = "APPEARANCE") {
             val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
             
@@ -87,7 +139,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(text = "Theme", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        Text(text = "Choose how DustZero looks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "Choose how ANTIGRAVITY looks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -117,24 +169,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
         
-        SettingsSection(title = "NOTIFICATIONS") {
-            SettingRowSwitch(
-                icon = Icons.Rounded.NotificationsActive,
-                label = "Cleaning Alerts",
-                description = "Notify when a cleaning cycle starts",
-                checked = pushAlerts,
-                onCheckedChange = { pushAlerts = it }
-            )
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowSwitch(
-                icon = Icons.Rounded.WifiOff,
-                label = "Device Offline Alerts",
-                description = "Notify if ESP32 disconnects",
-                checked = offlineAlerts,
-                onCheckedChange = { offlineAlerts = it }
-            )
-        }
-
         SettingsSection(title = "DEVELOPER & DEMO") {
             SettingRowSwitch(
                 icon = Icons.Rounded.Science,
@@ -143,7 +177,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 checked = demoModeEnabled,
                 onCheckedChange = { viewModel.setDemoMode(it) }
             )
-            
             if (demoModeEnabled) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -164,9 +197,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
         
         SettingsSection(title = "APP") {
-            SettingRowInfo(icon = Icons.Rounded.Info, label = "About DustZero", value = "")
+            SettingRowInfo(icon = Icons.Rounded.Info, label = "About ANTIGRAVITY", value = "")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = AppConstants.APP_VERSION)
+            SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = "2.0.0")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -186,7 +219,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Column(content = content)
@@ -259,7 +292,45 @@ fun SettingRowSwitch(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = MaterialTheme.colorScheme.primary
+                checkedTrackColor = EmeraldGreen
+            )
+        )
+    }
+}
+
+@Composable
+fun SettingRowInput(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        }
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.width(100.dp),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = EmeraldGreen,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
         )
     }

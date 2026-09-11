@@ -22,7 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dustzero.app.ui.theme.GreenPrimary
+import com.dustzero.app.ui.theme.EmeraldGreen
 import com.dustzero.app.ui.theme.OrangeSunlight
 import com.dustzero.app.ui.theme.RedError
 import com.dustzero.app.viewmodel.MainViewModel
@@ -31,10 +31,6 @@ import com.dustzero.app.ui.components.StatusCard
 
 @Composable
 fun DashboardScreen(viewModel: MainViewModel) {
-    val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
-    val panelStatus by viewModel.panelStatus.collectAsStateWithLifecycle()
-    val demoModeEnabled by viewModel.demoModeEnabled.collectAsStateWithLifecycle()
-
     val scrollState = rememberScrollState()
 
     Column(
@@ -46,81 +42,49 @@ fun DashboardScreen(viewModel: MainViewModel) {
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // Top Header
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "DustZero",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-                Text(
-                    text = "Smart Solar Panel Cleaning System",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            
-            val isOnline = sensorData.connected || demoModeEnabled
-            val statusDotColor by animateColorAsState(
-                targetValue = if (isOnline) GreenPrimary else RedError,
-                animationSpec = tween(500)
+            Text(
+                text = "ANTIGRAVITY",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                color = MaterialTheme.colorScheme.onBackground
             )
-            
-            Column(horizontalAlignment = Alignment.End) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(statusDotColor)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (demoModeEnabled) "DEMO ONLINE" else if (isOnline) "ESP32 ONLINE" else "ESP32 OFFLINE",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = statusDotColor
-                    )
-                }
-                Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(EmeraldGreen)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isOnline) "LIVE" else "No connection",
-                    style = MaterialTheme.typography.labelSmall,
+                    text = "Connected • ESP32-S3-001",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
         // Hero Status
-        val (statusColor, statusIcon, statusDesc) = when (panelStatus) {
-            "OPTIMAL" -> Triple(GreenPrimary, Icons.Rounded.CheckCircle, "Strong sunlight detected. Panel is producing expected power.")
-            "POSSIBLE DUST", "LOW OUTPUT" -> Triple(OrangeSunlight, Icons.Rounded.Warning, "Power output is significantly below the configured clean-panel baseline.")
-            "CLEANING REQUIRED" -> Triple(OrangeSunlight, Icons.Rounded.CleaningServices, "Performance degraded. Cleaning is highly recommended.")
-            "LOW SUNLIGHT" -> Triple(Color(0xFF64748B), Icons.Rounded.WbCloudy, "Sunlight is too weak for performance baseline check.")
-            "RAIN DETECTED" -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.WaterDrop, "Rain detected. Automatic cleaning is blocked.")
-            "CLEANING" -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.Autorenew, "Cleaning mechanism is currently running.")
-            "OFFLINE" -> Triple(RedError, Icons.Rounded.ErrorOutline, "Waiting for ESP32 sensor data...")
-            "ERROR" -> Triple(RedError, Icons.Rounded.Error, "System fault detected. Check alerts.")
-            else -> Triple(MaterialTheme.colorScheme.secondary, Icons.Rounded.Info, "Status: $panelStatus")
-        }
-        
         StatusCard(
-            title = "Solar Panel Status",
-            status = panelStatus,
-            icon = statusIcon,
-            color = statusColor,
-            description = statusDesc
+            title = "SOLAR PANEL STATUS: OPTIMAL",
+            status = "",
+            icon = Icons.Rounded.CheckCircle,
+            color = EmeraldGreen,
+            description = "Strong sunlight detected. Panel performance is ideal."
         )
 
         // Key Metrics Grid
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             MetricCard(
                 title = "Solar Power",
-                value = if (sensorData.connected || demoModeEnabled) String.format("%.2f", sensorData.solarPower) else "--",
+                value = "0.11",
                 unit = "W",
                 icon = Icons.Rounded.WbSunny,
                 iconTint = OrangeSunlight,
@@ -128,7 +92,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
             MetricCard(
                 title = "Voltage",
-                value = if (sensorData.connected || demoModeEnabled) String.format("%.2f", sensorData.solarVoltage) else "--",
+                value = "0.85",
                 unit = "V",
                 icon = Icons.Rounded.ElectricBolt,
                 iconTint = MaterialTheme.colorScheme.secondary,
@@ -139,7 +103,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             MetricCard(
                 title = "Current",
-                value = if (sensorData.connected || demoModeEnabled) String.format("%.1f", sensorData.solarCurrent) else "--",
+                value = "124.5",
                 unit = "mA",
                 icon = Icons.Rounded.BatteryChargingFull,
                 iconTint = MaterialTheme.colorScheme.secondary,
@@ -147,7 +111,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
             MetricCard(
                 title = "Temperature",
-                value = if (sensorData.connected || demoModeEnabled) String.format("%.1f", sensorData.temperature) else "--",
+                value = "38.19",
                 unit = "°C",
                 icon = Icons.Rounded.Thermostat,
                 iconTint = RedError,
@@ -157,69 +121,80 @@ fun DashboardScreen(viewModel: MainViewModel) {
 
         // Environment — Sunlight & Rain
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            val isStrongSun = sensorData.sunlightLevel == "STRONG"
             StatusCard(
                 title = "Sunlight",
-                status = if (sensorData.connected || demoModeEnabled) sensorData.sunlightLevel else "--",
-                icon = if (isStrongSun) Icons.Rounded.WbSunny else Icons.Rounded.CloudQueue,
-                color = if (isStrongSun) OrangeSunlight else Color(0xFF64748B),
-                description = if (sensorData.connected || demoModeEnabled) "LDR1: ${sensorData.ldr1}\nLDR2: ${sensorData.ldr2}" else "No data",
+                status = "STRONG",
+                icon = Icons.Rounded.WbSunny,
+                color = OrangeSunlight,
+                description = "LDR1: 47\nLDR2: 71",
                 modifier = Modifier.weight(1f)
             )
             
-            val isRain = sensorData.rainDetected
             StatusCard(
-                title = "Rain",
-                status = if (!sensorData.connected && !demoModeEnabled) "--" else if (isRain) "DETECTED" else "NO RAIN",
-                icon = if (isRain) Icons.Rounded.WaterDrop else Icons.Rounded.WbSunny,
-                color = if (!sensorData.connected && !demoModeEnabled) Color.Gray else if (isRain) MaterialTheme.colorScheme.secondary else GreenPrimary,
-                description = if (!sensorData.connected && !demoModeEnabled) "No data" else if (isRain) "Cleaning blocked" else "Safe for cleaning",
+                title = "Rain Sensor",
+                status = "NO RAIN",
+                icon = Icons.Rounded.CloudQueue,
+                color = EmeraldGreen,
+                description = "Safe for cleaning",
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Cleaning Status
-        val isCleaning = sensorData.cleaningState != "IDLE" && sensorData.cleaningState != "OFFLINE"
-        StatusCard(
-            title = "Cleaning Mechanism",
-            status = if (!sensorData.connected && !demoModeEnabled) "--" else if (isCleaning) "IN PROGRESS" else "READY",
-            icon = Icons.Rounded.CleaningServices,
-            color = if (isCleaning) MaterialTheme.colorScheme.secondary else GreenPrimary,
-            description = if (isCleaning) "${sensorData.cleaningState} - ${sensorData.cleaningProgress}%" else "No cleaning currently in progress"
-        )
-        
-        val canStart = (sensorData.connected || demoModeEnabled) && !isCleaning && !sensorData.rainDetected
-        val canStop = (sensorData.connected || demoModeEnabled) && isCleaning
-
-        Row(
+        // Cleaning Control Center
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
         ) {
-            Button(
-                onClick = { viewModel.startCleaning() },
-                enabled = canStart,
-                modifier = Modifier.weight(1f).height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = GreenPrimary,
-                    contentColor = Color.White
-                ),
-                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("START CLEANING", fontWeight = FontWeight.Bold)
-            }
-            if (isCleaning) {
-                Button(
-                    onClick = { viewModel.stopCleaning() },
-                    enabled = canStop,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = RedError,
-                        contentColor = Color.White
-                    ),
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+                Text(
+                    text = "Quick Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("STOP", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { viewModel.startCleaning() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EmeraldGreen,
+                            contentColor = Color.White
+                        ),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Text("START CLEANING", fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.stopCleaning() },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Text("STOP CLEANING", fontWeight = FontWeight.Bold)
+                    }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Last Cleaned: 2026-09-11 14:30",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 

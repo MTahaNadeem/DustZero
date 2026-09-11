@@ -52,9 +52,9 @@ fun AppNavigation(viewModel: MainViewModel) {
                     icon = { Icon(Icons.Rounded.Dashboard, contentDescription = "Dashboard") },
                     label = { Text("Dashboard") },
                     colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -71,9 +71,9 @@ fun AppNavigation(viewModel: MainViewModel) {
                     icon = { Icon(Icons.Rounded.Analytics, contentDescription = "Analytics") },
                     label = { Text("Analytics") },
                     colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -90,9 +90,9 @@ fun AppNavigation(viewModel: MainViewModel) {
                     icon = { Icon(Icons.Rounded.CleaningServices, contentDescription = "Cleaning") },
                     label = { Text("Cleaning") },
                     colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -119,9 +119,9 @@ fun AppNavigation(viewModel: MainViewModel) {
                     },
                     label = { Text("Alerts") },
                     colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -138,9 +138,9 @@ fun AppNavigation(viewModel: MainViewModel) {
                     icon = { Icon(Icons.Rounded.Settings, contentDescription = "Settings") },
                     label = { Text("Settings") },
                     colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedTextColor = MaterialTheme.colorScheme.onSurface,
+                        indicatorColor = Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
