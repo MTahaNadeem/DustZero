@@ -89,7 +89,7 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -114,7 +114,7 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {

@@ -22,9 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dustzero.app.ui.theme.EmeraldGreen
-import com.dustzero.app.ui.theme.OrangeSunlight
-import com.dustzero.app.ui.theme.RedError
+import com.dustzero.app.ui.theme.DangerRed
+import com.dustzero.app.ui.theme.PrimaryGreen
+import com.dustzero.app.ui.theme.WarningAmber
 import com.dustzero.app.viewmodel.MainViewModel
 import com.dustzero.app.ui.components.MetricCard
 import com.dustzero.app.ui.components.StatusCard
@@ -47,7 +47,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "ANTIGRAVITY",
+                text = "DustZero",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 2.sp,
@@ -59,7 +59,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(EmeraldGreen)
+                        .background(PrimaryGreen)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -76,7 +76,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
             title = "SOLAR PANEL STATUS: OPTIMAL",
             status = "",
             icon = Icons.Rounded.CheckCircle,
-            color = EmeraldGreen,
+            color = PrimaryGreen,
             description = "Strong sunlight detected. Panel performance is ideal."
         )
 
@@ -87,7 +87,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 value = "0.11",
                 unit = "W",
                 icon = Icons.Rounded.WbSunny,
-                iconTint = OrangeSunlight,
+                iconTint = WarningAmber,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
@@ -114,7 +114,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 value = "38.19",
                 unit = "°C",
                 icon = Icons.Rounded.Thermostat,
-                iconTint = RedError,
+                iconTint = DangerRed,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -125,7 +125,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 title = "Sunlight",
                 status = "STRONG",
                 icon = Icons.Rounded.WbSunny,
-                color = OrangeSunlight,
+                color = WarningAmber,
                 description = "LDR1: 47\nLDR2: 71",
                 modifier = Modifier.weight(1f)
             )
@@ -134,7 +134,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 title = "Rain Sensor",
                 status = "NO RAIN",
                 icon = Icons.Rounded.CloudQueue,
-                color = EmeraldGreen,
+                color = PrimaryGreen,
                 description = "Safe for cleaning",
                 modifier = Modifier.weight(1f)
             )
@@ -168,7 +168,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                             .weight(1f)
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = EmeraldGreen,
+                            containerColor = PrimaryGreen,
                             contentColor = Color.White
                         ),
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)

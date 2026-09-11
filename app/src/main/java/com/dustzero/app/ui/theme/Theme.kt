@@ -12,17 +12,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColors = lightColorScheme(
-    primary = EmeraldGreen,
+    primary = PrimaryGreen,
     onPrimary = Color.White,
     primaryContainer = Color(0xFFD1FAE5),
     onPrimaryContainer = CharcoalDark,
-    secondary = BlueAccent,
+    secondary = SecondaryBlue,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFFDBEAFE),
     onSecondaryContainer = CharcoalDark,
-    tertiary = OrangeSunlight,
+    tertiary = WarningAmber,
     onTertiary = Color.White,
-    error = RedError,
+    error = DangerRed,
     onError = Color.White,
     errorContainer = Color(0xFFFEE2E2),
     onErrorContainer = Color(0xFF991B1B),
@@ -30,21 +30,21 @@ private val LightColors = lightColorScheme(
     onBackground = CharcoalDark,
     surface = CardWhite,
     onSurface = CharcoalDark,
-    surfaceVariant = Color(0xFFF1F5F9),
+    surfaceVariant = Color(0xFFF3F4F6),
     onSurfaceVariant = CharcoalLight,
-    outline = Color(0xFFCBD5E1)
+    outline = Color(0xFFD1D5DB)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = EmeraldGreen,
+    primary = PrimaryGreen,
     onPrimary = CharcoalDark,
     primaryContainer = Color(0xFF065F46),
     onPrimaryContainer = Color(0xFFD1FAE5),
-    secondary = BlueAccent,
+    secondary = SecondaryBlue,
     onSecondary = CharcoalDark,
     secondaryContainer = Color(0xFF1E40AF),
     onSecondaryContainer = Color(0xFFDBEAFE),
-    tertiary = OrangeSunlight,
+    tertiary = WarningAmber,
     onTertiary = CharcoalDark,
     error = Color(0xFFF87171),
     onError = CharcoalDark,
@@ -56,7 +56,7 @@ private val DarkColors = darkColorScheme(
     onSurface = TextOffWhite,
     surfaceVariant = Color(0xFF334155),
     onSurfaceVariant = TextMutedGray,
-    outline = Color(0xFF64748B)
+    outline = Color(0xFF475569)
 )
 
 @Composable

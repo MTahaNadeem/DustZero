@@ -18,9 +18,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.dustzero.app.ui.theme.EmeraldGreen
-import com.dustzero.app.ui.theme.OrangeSunlight
-import com.dustzero.app.ui.theme.RedError
+import com.dustzero.app.ui.theme.DangerRed
+import com.dustzero.app.ui.theme.PrimaryGreen
+import com.dustzero.app.ui.theme.WarningAmber
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -32,7 +32,7 @@ fun AlertsScreen(viewModel: MainViewModel) {
         Triple(
             "WARNING",
             "LOW SOLAR OUTPUT - Solar output is lower than expected for current sunlight.",
-            OrangeSunlight
+            WarningAmber
         ),
         Triple(
             "INFO",
@@ -42,7 +42,7 @@ fun AlertsScreen(viewModel: MainViewModel) {
         Triple(
             "SYSTEM",
             "RAIN DETECTED - Automatic cleaning is temporarily blocked.",
-            RedError
+            DangerRed
         )
     )
 
@@ -74,7 +74,7 @@ fun AlertsScreen(viewModel: MainViewModel) {
                 Text(
                     text = "Mark all as read",
                     fontWeight = FontWeight.Bold,
-                    color = EmeraldGreen
+                    color = PrimaryGreen
                 )
             }
         }

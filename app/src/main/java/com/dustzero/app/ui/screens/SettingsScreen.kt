@@ -20,7 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.data.ThemeMode
-import com.dustzero.app.ui.theme.EmeraldGreen
+import com.dustzero.app.ui.theme.PrimaryGreen
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -62,9 +62,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
 
         SettingsSection(title = "DEVICE") {
-            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "Antigravity Solar Cleaner 01")
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "solarclean-001")
+            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "DustZero Cleaning System 01")
+            Spacer(modifier = Modifier.height(12.dp))
+            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "dustzero-001")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.Memory, label = "Firmware Version", value = "1.0.0")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
@@ -139,7 +139,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(text = "Theme", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
-                        Text(text = "Choose how ANTIGRAVITY looks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(text = "Choose how DustZero looks", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -197,7 +197,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
         
         SettingsSection(title = "APP") {
-            SettingRowInfo(icon = Icons.Rounded.Info, label = "About ANTIGRAVITY", value = "")
+            SettingRowInfo(icon = Icons.Rounded.Info, label = "About DustZero", value = "")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = "2.0.0")
         }
@@ -217,7 +217,7 @@ fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) 
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -292,7 +292,7 @@ fun SettingRowSwitch(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = EmeraldGreen
+                checkedTrackColor = PrimaryGreen
             )
         )
     }
@@ -329,7 +329,7 @@ fun SettingRowInput(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = EmeraldGreen,
+                focusedBorderColor = PrimaryGreen,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
         )

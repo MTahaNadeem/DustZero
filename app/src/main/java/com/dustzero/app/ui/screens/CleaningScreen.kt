@@ -20,9 +20,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dustzero.app.ui.theme.EmeraldGreen
-import com.dustzero.app.ui.theme.RedError
-import com.dustzero.app.ui.theme.OrangeSunlight
+import com.dustzero.app.ui.theme.DangerRed
+import com.dustzero.app.ui.theme.PrimaryGreen
+import com.dustzero.app.ui.theme.WarningAmber
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -36,7 +36,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
 
     val isCleaning = sensorData.cleaningState != "IDLE" && sensorData.cleaningState != "OFFLINE"
-    val stateColor = if (isCleaning) MaterialTheme.colorScheme.secondary else EmeraldGreen
+    val stateColor = if (isCleaning) MaterialTheme.colorScheme.secondary else PrimaryGreen
 
     Column(
         modifier = Modifier
@@ -55,7 +55,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                 color = MaterialTheme.colorScheme.onBackground
             )
             Text(
-                text = "Manage and monitor the ANTIGRAVITY cleaning mechanism",
+                text = "Manage and monitor the DustZero cleaning mechanism",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -66,7 +66,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
         // Status Header
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
         ) {
@@ -95,7 +95,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
         // Cycle Information
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
         ) {
@@ -130,7 +130,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
         // Progress UI
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
         ) {
@@ -174,7 +174,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                 enabled = canStart,
                 modifier = Modifier.weight(1f).height(64.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = EmeraldGreen,
+                    containerColor = PrimaryGreen,
                     contentColor = Color.White
                 ),
                 shape = RoundedCornerShape(16.dp)
@@ -186,9 +186,9 @@ fun CleaningScreen(viewModel: MainViewModel) {
                 enabled = canStop,
                 modifier = Modifier.weight(1f).height(64.dp),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = RedError
+                    contentColor = DangerRed
                 ),
-                border = BorderStroke(2.dp, RedError),
+                border = BorderStroke(2.dp, DangerRed),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("STOP CLEANING", fontWeight = FontWeight.Bold)
@@ -209,7 +209,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                         viewModel.startCleaning()
                         showStartDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldGreen)
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryGreen)
                 ) {
                     Text("Start Cleaning")
                 }
@@ -233,7 +233,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                         viewModel.stopCleaning()
                         showStopDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedError)
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
                     Text("Stop")
                 }
