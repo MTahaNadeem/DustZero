@@ -1,15 +1,13 @@
 package com.dustzero.app.ui.screens
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -32,16 +30,58 @@ import com.dustzero.app.ui.components.StatusCard
 @Composable
 fun DashboardScreen(viewModel: MainViewModel) {
     val scrollState = rememberScrollState()
+    val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
+    val panelStatus by viewModel.panelStatus.collectAsStateWithLifecycle()
+
+    // Derive display values from live sensor data
+    val isConnected = sensorData.connected
+    val isCleaning = sensorData.cleaningState != "IDLE"
+            && sensorData.cleaningState != "READY"
+            && sensorData.cleaningState != "OFFLINE"
+
+    val heroColor = when (panelStatus) {
+        "OPTIMAL" -> PrimaryGreen
+        "CLEANING" -> MaterialTheme.colorScheme.secondary
+        "POSSIBLE DUST" -> WarningAmber
+        "RAIN DETECTED" -> MaterialTheme.colorScheme.secondary
+        "LOW SUNLIGHT" -> WarningAmber
+        else -> DangerRed // OFFLINE
+    }
+    val heroIcon = when (panelStatus) {
+        "OPTIMAL" -> Icons.Rounded.CheckCircle
+        "CLEANING" -> Icons.Rounded.CleaningServices
+        "POSSIBLE DUST" -> Icons.Rounded.Warning
+        "RAIN DETECTED" -> Icons.Rounded.CloudQueue
+        "LOW SUNLIGHT" -> Icons.Rounded.WbCloudy
+        else -> Icons.Rounded.CloudOff
+    }
+    val heroDescription = when (panelStatus) {
+        "OPTIMAL" -> "Strong sunlight detected. Panel performance is ideal."
+        "CLEANING" -> "Cleaning cycle is currently active."
+        "POSSIBLE DUST" -> "Power output below baseline — dust accumulation likely."
+        "RAIN DETECTED" -> "Rain detected. Cleaning is temporarily blocked."
+        "LOW SUNLIGHT" -> "Insufficient sunlight for accurate performance reading."
+        else -> "Device is offline. Check Wi-Fi and cloud connection."
+    }
+
+    val sunlightStatus = sensorData.sunlightLevel.ifBlank { if (sensorData.sunDetected) "DETECTED" else "LOW" }
+    val rainStatus = if (sensorData.rainDetected) "RAIN" else "NO RAIN"
+    val rainColor = if (sensorData.rainDetected) DangerRed else PrimaryGreen
+    val ldrDescription = "LDR1: ${sensorData.ldr1}\nLDR2: ${sensorData.ldr2}"
+    val rainDescription = if (sensorData.rainDetected) "Cleaning blocked" else "Safe for cleaning"
+
+    val canStart = isConnected && !isCleaning && !sensorData.rainDetected
+    val canStop = isConnected && isCleaning
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .background(MaterialTheme.colorScheme.background)
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Top Header
+        // ── Top Header ───────────────────────────────────────────────────────
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -59,32 +99,38 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     modifier = Modifier
                         .size(10.dp)
                         .clip(CircleShape)
-                        .background(PrimaryGreen)
+                        .background(if (isConnected) PrimaryGreen else DangerRed)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Connected • ESP32-S3-001",
+                    text = if (isConnected) "Connected · ESP32-S3-001" else "Device Offline",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isConnected)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        DangerRed
                 )
             }
         }
 
-        // Hero Status
+        // ── Hero Status Banner ───────────────────────────────────────────────
         StatusCard(
-            title = "SOLAR PANEL STATUS: OPTIMAL",
-            status = "",
-            icon = Icons.Rounded.CheckCircle,
-            color = PrimaryGreen,
-            description = "Strong sunlight detected. Panel performance is ideal."
+            title = "PANEL STATUS",
+            status = panelStatus,
+            icon = heroIcon,
+            color = heroColor,
+            description = heroDescription
         )
 
-        // Key Metrics Grid
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // ── Key Metrics — Row 1 ──────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             MetricCard(
                 title = "Solar Power",
-                value = "0.11",
+                value = "%.2f".format(sensorData.solarPower),
                 unit = "W",
                 icon = Icons.Rounded.WbSunny,
                 iconTint = WarningAmber,
@@ -92,18 +138,22 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
             MetricCard(
                 title = "Voltage",
-                value = "0.85",
+                value = "%.2f".format(sensorData.solarVoltage),
                 unit = "V",
                 icon = Icons.Rounded.ElectricBolt,
                 iconTint = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
         }
-        
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+
+        // ── Key Metrics — Row 2 ──────────────────────────────────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             MetricCard(
                 title = "Current",
-                value = "124.5",
+                value = "%.1f".format(sensorData.solarCurrent),
                 unit = "mA",
                 icon = Icons.Rounded.BatteryChargingFull,
                 iconTint = MaterialTheme.colorScheme.secondary,
@@ -111,7 +161,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
             MetricCard(
                 title = "Temperature",
-                value = "38.19",
+                value = "%.1f".format(sensorData.temperature),
                 unit = "°C",
                 icon = Icons.Rounded.Thermostat,
                 iconTint = DangerRed,
@@ -119,33 +169,37 @@ fun DashboardScreen(viewModel: MainViewModel) {
             )
         }
 
-        // Environment — Sunlight & Rain
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // ── Environment — Sunlight & Rain (equal-height cards) ───────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min), // <-- makes both cards the same height
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             StatusCard(
                 title = "Sunlight",
-                status = "STRONG",
+                status = sunlightStatus,
                 icon = Icons.Rounded.WbSunny,
                 color = WarningAmber,
-                description = "LDR1: 47\nLDR2: 71",
+                description = ldrDescription,
                 modifier = Modifier.weight(1f)
             )
-            
             StatusCard(
                 title = "Rain Sensor",
-                status = "NO RAIN",
+                status = rainStatus,
                 icon = Icons.Rounded.CloudQueue,
-                color = PrimaryGreen,
-                description = "Safe for cleaning",
+                color = rainColor,
+                description = rainDescription,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Cleaning Control Center
+        // ── Quick Actions ────────────────────────────────────────────────────
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp)
+            shape = RoundedCornerShape(16.dp)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -160,44 +214,55 @@ fun DashboardScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // START — filled green, disabled when cleaning/offline
                     Button(
                         onClick = { viewModel.startCleaning() },
+                        enabled = canStart,
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PrimaryGreen,
-                            contentColor = Color.White
+                            contentColor = Color.White,
+                            disabledContainerColor = PrimaryGreen.copy(alpha = 0.3f),
+                            disabledContentColor = Color.White.copy(alpha = 0.5f)
                         ),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("START CLEANING", fontWeight = FontWeight.Bold)
+                        Text("START", fontWeight = FontWeight.Bold)
                     }
-                    OutlinedButton(
+                    // STOP — filled red when active, visually muted when inactive
+                    Button(
                         onClick = { viewModel.stopCleaning() },
+                        enabled = canStop,
                         modifier = Modifier
                             .weight(1f)
                             .height(56.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DangerRed,
+                            contentColor = Color.White,
+                            disabledContainerColor = DangerRed.copy(alpha = 0.25f),
+                            disabledContentColor = Color.White.copy(alpha = 0.5f)
                         ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("STOP CLEANING", fontWeight = FontWeight.Bold)
+                        Text("STOP", fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "Last Cleaned: 2026-09-11 14:30",
+                    text = if (isCleaning)
+                        "Status: ${sensorData.cleaningState}"
+                    else
+                        "System Ready",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
