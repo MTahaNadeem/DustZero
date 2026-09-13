@@ -24,6 +24,7 @@ import com.dustzero.app.ui.screens.AnalyticsScreen
 import com.dustzero.app.ui.screens.CleaningScreen
 import com.dustzero.app.ui.screens.DashboardScreen
 import com.dustzero.app.ui.screens.SettingsScreen
+import com.dustzero.app.ui.screens.SplashScreen
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -36,10 +37,11 @@ fun AppNavigation(viewModel: MainViewModel) {
 
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 8.dp
-            ) {
+            if (currentRoute != "splash") {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
                 NavigationBarItem(
                     selected = currentRoute == "dashboard",
                     onClick = {
@@ -146,13 +148,21 @@ fun AppNavigation(viewModel: MainViewModel) {
                     )
                 )
             }
+            }
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "dashboard",
+            startDestination = "splash",
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable("splash") { 
+                SplashScreen(onSplashComplete = {
+                    navController.navigate("dashboard") {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                })
+            }
             composable("dashboard") { DashboardScreen(viewModel) }
             composable("analytics") { AnalyticsScreen(viewModel) }
             composable("cleaning") { CleaningScreen(viewModel) }

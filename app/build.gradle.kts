@@ -106,7 +106,7 @@ dependencies {
   implementation(libs.vico.compose)
   implementation(libs.supabase.postgrest)
   implementation(libs.supabase.realtime)
-  implementation(libs.ktor.client.android)
+  implementation(libs.ktor.client.okhttp)
   // implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
