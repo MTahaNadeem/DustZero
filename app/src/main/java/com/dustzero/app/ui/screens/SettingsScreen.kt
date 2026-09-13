@@ -2,6 +2,7 @@ package com.dustzero.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,12 +38,36 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var autoCleaning by remember { mutableStateOf(true) }
     var pushAlerts by remember { mutableStateOf(true) }
     var offlineAlerts by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
 
     var cleaningCooldown by remember { mutableStateOf("30") }
     var cleaningDistance by remember { mutableStateOf("500") }
     
     var sunlightThreshold by remember { mutableStateOf("200") }
     var powerBaseline by remember { mutableStateOf("0.05") }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            title = { Text(AppConstants.APP_NAME, fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text(AppConstants.APP_SUBTITLE, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Version: ${AppConstants.APP_VERSION}", style = MaterialTheme.typography.labelSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("DustZero is an automated solar panel cleaning system designed to maintain peak efficiency. This companion app provides real-time monitoring and manual overrides for your hardware.", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Developed by MTahaNadeem", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text("OK")
+                }
+            }
+        )
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -227,7 +252,11 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
         
         SettingsSection(title = "APP") {
-            SettingRowInfo(icon = Icons.Rounded.Info, label = "About DustZero", value = "")
+            SettingRowAction(
+                icon = Icons.Rounded.Info, 
+                label = "About DustZero", 
+                onClick = { showAboutDialog = true }
+            )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = AppConstants.APP_VERSION)
         }
@@ -363,6 +392,39 @@ fun SettingRowInput(
                 focusedBorderColor = PrimaryGreen,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
+        )
+    }
+}
+
+@Composable
+fun SettingRowAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+        }
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
