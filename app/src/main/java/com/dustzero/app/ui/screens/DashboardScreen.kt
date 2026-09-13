@@ -25,15 +25,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.models.AppConstants
-import com.dustzero.app.ui.theme.DangerRed
-import com.dustzero.app.ui.theme.PrimaryGreen
-import com.dustzero.app.ui.theme.WarningAmber
 import com.dustzero.app.viewmodel.MainViewModel
 import com.dustzero.app.ui.components.MetricCard
 import com.dustzero.app.ui.components.StatusCard
 
 @Composable
 fun DashboardScreen(viewModel: MainViewModel) {
+    val DangerRed = MaterialTheme.colorScheme.error
+    val PrimaryGreen = MaterialTheme.colorScheme.primary
+    val WarningAmber = MaterialTheme.colorScheme.tertiary
     val scrollState = rememberScrollState()
     val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
     val panelStatus by viewModel.panelStatus.collectAsStateWithLifecycle()

@@ -63,7 +63,7 @@ fun MetricCard(
                     text = value,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (value == "—" && androidx.compose.foundation.isSystemInDarkTheme()) com.dustzero.app.ui.theme.TextDisabledGray else MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

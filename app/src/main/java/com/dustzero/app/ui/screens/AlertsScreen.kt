@@ -24,9 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.data.AlertEntity
-import com.dustzero.app.ui.theme.DangerRed
-import com.dustzero.app.ui.theme.PrimaryGreen
-import com.dustzero.app.ui.theme.WarningAmber
 import com.dustzero.app.viewmodel.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -190,8 +187,8 @@ fun AlertsScreen(viewModel: MainViewModel) {
 fun AlertCard(alert: AlertEntity, onMarkRead: () -> Unit) {
     val severity = alert.severity.uppercase()
     val (icon, accentColor) = when (severity) {
-        "CRITICAL", "DANGER", "SYSTEM" -> Pair(Icons.Rounded.Error, DangerRed)
-        "WARNING" -> Pair(Icons.Rounded.Warning, WarningAmber)
+        "CRITICAL", "DANGER", "SYSTEM" -> Pair(Icons.Rounded.Error, MaterialTheme.colorScheme.error)
+        "WARNING" -> Pair(Icons.Rounded.Warning, MaterialTheme.colorScheme.tertiary)
         else -> Pair(Icons.Rounded.Info, MaterialTheme.colorScheme.secondary)
     }
 

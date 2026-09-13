@@ -177,8 +177,8 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
         } else {
             // Theme aware axes components
             val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-            val lineColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-            val guideColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+            val lineColor = MaterialTheme.colorScheme.outline
+            val guideColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
 
             // 1. Solar Power Output
             Card(

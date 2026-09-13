@@ -73,7 +73,7 @@ fun StatusCard(
                 text = status,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = color,
+                color = if (status == "—" && androidx.compose.foundation.isSystemInDarkTheme()) com.dustzero.app.ui.theme.TextDisabledGray else color,
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis

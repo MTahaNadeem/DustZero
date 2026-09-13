@@ -51,12 +51,12 @@ private val DarkColors = darkColorScheme(
     errorContainer = Color(0xFF991B1B),
     onErrorContainer = Color(0xFFFEE2E2),
     background = DarkBackground,
-    onBackground = TextOffWhite,
+    onBackground = TextWarmWhite,
     surface = DarkCard,
-    onSurface = TextOffWhite,
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = TextMutedGray,
-    outline = Color(0xFF475569)
+    onSurface = TextWarmWhite,
+    surfaceVariant = DarkElevatedSurface,
+    onSurfaceVariant = TextWarmMutedGray,
+    outline = DarkBorderDivider
 )
 
 @Composable

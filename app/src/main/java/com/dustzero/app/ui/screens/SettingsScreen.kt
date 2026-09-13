@@ -21,7 +21,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.data.ThemeMode
-import com.dustzero.app.ui.theme.PrimaryGreen
 import com.dustzero.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import com.dustzero.app.models.AppConstants
@@ -359,7 +358,7 @@ fun SettingRowSwitch(
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = PrimaryGreen
+                checkedTrackColor = MaterialTheme.colorScheme.primary
             )
         )
     }
@@ -396,7 +395,7 @@ fun SettingRowInput(
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PrimaryGreen,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
         )
