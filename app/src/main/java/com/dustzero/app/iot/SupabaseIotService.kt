@@ -12,6 +12,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.decodeRecordOrNull
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -124,11 +125,24 @@ class SupabaseIotService(
 
                 channel.subscribe()
 
-                // 3. On every Realtime update event, re-fetch the full row
-                // (Realtime UPDATE payloads can be partial; a full SELECT is safer)
-                changes.collect { _ ->
+                // 3. On every Realtime update event, decode the payload directly to avoid an extra network round-trip
+                changes.collect { action ->
                     if (!_demoModeEnabled.value) {
-                        fetchAndApplyDevice()
+                        try {
+                            val dto = action.decodeRecordOrNull<DeviceDTO>()
+                            if (dto != null) {
+                                val previousData = _sensorData.value
+                                val newData = dtoToSensorData(dto)
+                                _sensorData.value = newData
+                                generateAlertsForStateChange(previousData, newData)
+                            } else {
+                                // Fallback if partial update or decode fails
+                                fetchAndApplyDevice()
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            fetchAndApplyDevice()
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -366,6 +380,44 @@ class SupabaseIotService(
             0L
         } catch (e: Exception) {
             0L
+        }
+    }
+
+    override suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO> {
+        if (_demoModeEnabled.value || !isConfigured) return fallbackDemoService.getDeviceHistory(rangeHours)
+        
+        return try {
+            // Get history from the last `rangeHours` hours, ordered by recorded_at ascending
+            val now = System.currentTimeMillis()
+            val cutoff = now - (rangeHours * 60 * 60 * 1000L)
+            val isoCutoff = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(cutoff)
+
+            supabase.from("device_history")
+                .select { 
+                    filter { 
+                        eq("device_id", AppConstants.DEVICE_ID)
+                        gte("recorded_at", isoCutoff)
+                    }
+                    order("recorded_at", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
+                }
+                .decodeList<DeviceHistoryDTO>()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    override suspend fun refreshConnection(): Boolean {
+        if (_demoModeEnabled.value || !isConfigured) return fallbackDemoService.refreshConnection()
+        
+        return try {
+            fetchAndApplyDevice()
+            _sensorData.value.isOnline
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }

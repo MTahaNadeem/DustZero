@@ -218,4 +218,33 @@ class DemoIotService(private val dao: AppDao) : IotService {
             _sensorData.update { it.copy(cleaningProgress = i, cleaningSteps = currentSteps) }
         }
     }
+
+    override suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO> {
+        delay(800) // Simulate network delay
+        if (rangeHours == 24) {
+            // Generate some mock history data
+            val now = System.currentTimeMillis()
+            val list = mutableListOf<DeviceHistoryDTO>()
+            for (i in 0 until 12) {
+                val time = now - ((12 - i) * 2 * 60 * 60 * 1000L)
+                val iso = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).apply {
+                    timeZone = java.util.TimeZone.getTimeZone("UTC")
+                }.format(time)
+                list.add(DeviceHistoryDTO(
+                    deviceId = AppConstants.DEVICE_ID,
+                    recordedAt = iso,
+                    solarPower = 0.05 + (i * 0.01),
+                    solarVoltage = 0.8 + (i * 0.01),
+                    temperature = 30.0 + i
+                ))
+            }
+            return list
+        }
+        return emptyList()
+    }
+
+    override suspend fun refreshConnection(): Boolean {
+        delay(1000)
+        return _sensorData.value.isOnline
+    }
 }

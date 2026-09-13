@@ -11,6 +11,10 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,10 +39,30 @@ fun DashboardScreen(viewModel: MainViewModel) {
     val isOnline by viewModel.isDeviceOnline.collectAsStateWithLifecycle()
     val hasFault by viewModel.hasFault.collectAsStateWithLifecycle()
 
+    var isStarting by remember { mutableStateOf(false) }
+    var showOfflineError by remember { mutableStateOf(false) }
+
     // Derive display values from live sensor data
     val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
     val canStart = isOnline && !isCleaning && !sensorData.rainDetected && !hasFault
     val canStop = isOnline && isCleaning
+
+    LaunchedEffect(isCleaning, hasFault) {
+        if (isCleaning || hasFault) {
+            isStarting = false
+        }
+    }
+
+    LaunchedEffect(isStarting) {
+        if (isStarting) {
+            kotlinx.coroutines.delay(15000)
+            if (isStarting) {
+                isStarting = false
+                showOfflineError = true // Reuse this flag to show error on button
+            }
+        }
+    }
+
 
     val heroColor = when (panelStatus) {
         "OPTIMAL" -> PrimaryGreen
@@ -102,6 +126,15 @@ fun DashboardScreen(viewModel: MainViewModel) {
                         .clip(CircleShape)
                         .background(if (isOnline) PrimaryGreen else DangerRed)
                 )
+                if (isOnline) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "LIVE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PrimaryGreen,
+                        fontWeight = FontWeight.Black
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (isOnline) "Connected · ESP32-S3-001" else "Device Offline",
@@ -256,18 +289,27 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Button(
-                        onClick = { viewModel.startCleaning() },
-                        enabled = canStart,
+                        onClick = { 
+                            if (!canStart) {
+                                showOfflineError = true
+                            } else {
+                                isStarting = true
+                                viewModel.startCleaning()
+                            }
+                        },
+                        enabled = true, // We handle disabled state manually to show errors
                         modifier = Modifier.weight(1f).height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryGreen,
-                            contentColor = Color.White,
-                            disabledContainerColor = PrimaryGreen.copy(alpha = 0.3f),
-                            disabledContentColor = Color.White.copy(alpha = 0.5f)
+                            containerColor = if (!canStart) PrimaryGreen.copy(alpha = 0.3f) else PrimaryGreen,
+                            contentColor = if (!canStart) Color.White.copy(alpha = 0.5f) else Color.White,
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("START", fontWeight = FontWeight.Bold)
+                        if (isStarting) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                        } else {
+                            Text(if (showOfflineError && !canStart) "Unavailable" else "START", fontWeight = FontWeight.Bold)
+                        }
                     }
                     Button(
                         onClick = { viewModel.stopCleaning() },

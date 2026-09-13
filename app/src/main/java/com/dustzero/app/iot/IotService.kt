@@ -15,4 +15,6 @@ interface IotService {
     suspend fun homeMotor()
     fun updateConfig(newConfig: ThresholdConfig)
     fun setDemoScenario(scenario: String)
+    suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO>
+    suspend fun refreshConnection(): Boolean
 }

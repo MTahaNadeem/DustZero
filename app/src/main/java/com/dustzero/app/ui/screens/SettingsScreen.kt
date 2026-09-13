@@ -22,11 +22,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dustzero.app.data.ThemeMode
 import com.dustzero.app.ui.theme.PrimaryGreen
 import com.dustzero.app.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
+import com.dustzero.app.models.AppConstants
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
     val demoModeEnabled by viewModel.demoModeEnabled.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    var isRefreshing by remember { mutableStateOf(false) }
     
     // Local UI state for settings (mock)
     var autoCleaning by remember { mutableStateOf(true) }
@@ -39,11 +44,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var sunlightThreshold by remember { mutableStateOf("200") }
     var powerBaseline by remember { mutableStateOf("0.05") }
 
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        modifier = Modifier.fillMaxSize()
+    ) { paddingValues ->
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .background(MaterialTheme.colorScheme.background)
+            .padding(paddingValues)
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -75,12 +85,32 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 OutlinedButton(
-                    onClick = { /* Refresh connection logic */ },
+                    onClick = { 
+                        if (!isRefreshing) {
+                            isRefreshing = true
+                            viewModel.refreshConnection { isOnline ->
+                                isRefreshing = false
+                                scope.launch {
+                                    if (isOnline) {
+                                        snackbarHostState.showSnackbar("Connection refreshed — Device Online")
+                                    } else {
+                                        snackbarHostState.showSnackbar("Device Offline — Unable to reach device")
+                                    }
+                                }
+                            }
+                        }
+                    },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Refresh Connection", fontWeight = FontWeight.Bold)
+                    if (isRefreshing) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Refreshing...", fontWeight = FontWeight.Bold)
+                    } else {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Refresh Connection", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -199,10 +229,11 @@ fun SettingsScreen(viewModel: MainViewModel) {
         SettingsSection(title = "APP") {
             SettingRowInfo(icon = Icons.Rounded.Info, label = "About DustZero", value = "")
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = "2.0.0")
+            SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = AppConstants.APP_VERSION)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+    }
     }
 }
 

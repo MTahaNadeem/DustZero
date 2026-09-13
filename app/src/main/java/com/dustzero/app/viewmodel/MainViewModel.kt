@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.dustzero.app.iot.DeviceHistoryDTO
 
 class MainViewModel(
     private val iotService: IotService,
@@ -98,6 +99,17 @@ class MainViewModel(
 
     fun updateConfig(config: ThresholdConfig) {
         iotService.updateConfig(config)
+    }
+
+    suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO> {
+        return iotService.getDeviceHistory(rangeHours)
+    }
+
+    fun refreshConnection(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isOnline = iotService.refreshConnection()
+            onResult(isOnline)
+        }
     }
 
     // ─── Demo mode ────────────────────────────────────────────────────────────

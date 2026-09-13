@@ -20,7 +20,7 @@ object AppConstants {
 
     const val APP_NAME = "DustZero"
     const val APP_SUBTITLE = "Smart Solar Panel Cleaning System"
-    const val APP_VERSION = "1.0.0"
+    const val APP_VERSION = "2.1.0"
 
     // ─── Supabase Tables ─────────────────────────────────────────────────────
     // Schema as of v1: two tables only — devices and commands.

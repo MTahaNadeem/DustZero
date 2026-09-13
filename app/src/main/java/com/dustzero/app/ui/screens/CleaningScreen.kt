@@ -38,15 +38,55 @@ fun CleaningScreen(viewModel: MainViewModel) {
 
     var showStartDialog by remember { mutableStateOf(false) }
     var showStopDialog by remember { mutableStateOf(false) }
-
-    val scrollState = rememberScrollState()
+    
+    var isStarting by remember { mutableStateOf(false) }
+    var isStopping by remember { mutableStateOf(false) }
+    var showOfflineError by remember { mutableStateOf(false) }
 
     // Use AppConstants.isActivelyCleaning() to match exact ESP32 schema state values:
-    // MOVING_DOWN | PAUSE_BOTTOM | MOVING_UP (not "READY", "STOPPED", or space-separated strings)
     val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
 
     // Device is offline when NOT online AND not in demo mode
     val isOffline = !isOnline && !demoModeEnabled
+
+    // Start: requires online (or demo), not already cleaning, no rain, no fault
+    val canStart = (isOnline || demoModeEnabled) && !isCleaning && !sensorData.rainDetected && !hasFault
+    // Stop: requires online (or demo) and an active cleaning cycle
+    val canStop = (isOnline || demoModeEnabled) && isCleaning
+
+    LaunchedEffect(isCleaning, hasFault) {
+        if (isCleaning) {
+            isStarting = false
+        }
+        if (!isCleaning) {
+            isStopping = false
+        }
+        if (hasFault) {
+            isStarting = false
+        }
+    }
+
+    LaunchedEffect(isStarting) {
+        if (isStarting) {
+            kotlinx.coroutines.delay(15000)
+            if (isStarting) {
+                isStarting = false
+                showOfflineError = true
+            }
+        }
+    }
+
+    LaunchedEffect(isStopping) {
+        if (isStopping) {
+            kotlinx.coroutines.delay(15000)
+            if (isStopping) {
+                isStopping = false
+                showOfflineError = true
+            }
+        }
+    }
+
+    val scrollState = rememberScrollState()
 
     val stateColor = when {
         hasFault -> DangerRed
@@ -54,11 +94,6 @@ fun CleaningScreen(viewModel: MainViewModel) {
         isCleaning -> MaterialTheme.colorScheme.secondary
         else -> PrimaryGreen
     }
-
-    // Start: requires online (or demo), not already cleaning, no rain, no fault
-    val canStart = (isOnline || demoModeEnabled) && !isCleaning && !sensorData.rainDetected && !hasFault
-    // Stop: requires online (or demo) and an active cleaning cycle
-    val canStop = (isOnline || demoModeEnabled) && isCleaning
 
     val progressFloat = if (isCleaning) sensorData.cleaningProgress / 100f else 0f
     val animatedProgress by animateFloatAsState(targetValue = progressFloat, animationSpec = tween(600), label = "progress")
@@ -271,45 +306,61 @@ fun CleaningScreen(viewModel: MainViewModel) {
         ) {
             // START — filled green primary action
             Button(
-                onClick = { showStartDialog = true },
-                enabled = canStart,
+                onClick = { 
+                    if (!canStart) {
+                        showOfflineError = true
+                    } else {
+                        showStartDialog = true
+                    }
+                },
+                enabled = true,
                 modifier = Modifier
                     .weight(1f)
                     .height(60.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryGreen,
-                    contentColor = Color.White,
-                    disabledContainerColor = PrimaryGreen.copy(alpha = 0.28f),
-                    disabledContentColor = Color.White.copy(alpha = 0.45f)
+                    containerColor = if (!canStart) PrimaryGreen.copy(alpha = 0.28f) else PrimaryGreen,
+                    contentColor = if (!canStart) Color.White.copy(alpha = 0.45f) else Color.White
                 ),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Text(
-                    "START CLEANING",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                if (isStarting) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        if (showOfflineError && !canStart) "UNAVAILABLE" else "START CLEANING",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
             }
             // STOP — filled danger action (high-priority red)
             Button(
-                onClick = { showStopDialog = true },
-                enabled = canStop,
+                onClick = { 
+                    if (!canStop) {
+                        showOfflineError = true
+                    } else {
+                        showStopDialog = true 
+                    }
+                },
+                enabled = true,
                 modifier = Modifier
                     .weight(1f)
                     .height(60.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = DangerRed,
-                    contentColor = Color.White,
-                    disabledContainerColor = DangerRed.copy(alpha = 0.25f),
-                    disabledContentColor = Color.White.copy(alpha = 0.45f)
+                    containerColor = if (!canStop) DangerRed.copy(alpha = 0.25f) else DangerRed,
+                    contentColor = if (!canStop) Color.White.copy(alpha = 0.45f) else Color.White
                 ),
                 shape = RoundedCornerShape(14.dp)
             ) {
-                Text(
-                    "STOP CLEANING",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 13.sp
-                )
+                if (isStopping) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        if (showOfflineError && !canStop) "UNAVAILABLE" else "STOP CLEANING",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
 
@@ -344,6 +395,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
+                        isStarting = true
                         viewModel.startCleaning()
                         showStartDialog = false
                     },
@@ -368,6 +420,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
+                        isStopping = true
                         viewModel.stopCleaning()
                         showStopDialog = false
                     },
