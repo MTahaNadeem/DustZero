@@ -51,42 +51,63 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
         isLoading = false
     }
 
-    val powerChartEntryModel = remember(history) {
-        if (history.isEmpty()) return@remember entryModelOf(0f)
-        val entries = history.mapIndexed { index, dto ->
-            FloatEntry(x = index.toFloat(), y = dto.solarPower.toFloat())
-        }
-        entryModelOf(entries)
-    }
-    
-    val tempChartEntryModel = remember(history) {
-        if (history.isEmpty()) return@remember entryModelOf(0f)
-        val entries = history.mapIndexed { index, dto ->
-            FloatEntry(x = index.toFloat(), y = dto.temperature.toFloat())
-        }
-        entryModelOf(entries)
-    }
-
-    val voltageChartEntryModel = remember(history) {
-        if (history.isEmpty()) return@remember entryModelOf(0f)
-        val entries = history.mapIndexed { index, dto ->
-            FloatEntry(x = index.toFloat(), y = dto.solarVoltage.toFloat())
-        }
-        entryModelOf(entries)
-    }
-
-    val currentChartEntryModel = remember(history) {
-        if (history.isEmpty()) return@remember entryModelOf(0f)
-        val entries = history.mapIndexed { index, dto ->
-            FloatEntry(x = index.toFloat(), y = dto.solarCurrent.toFloat())
-        }
-        entryModelOf(entries)
-    }
-
     // --- Formatters ---
     val isoFormatter = remember { SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { 
         timeZone = java.util.TimeZone.getTimeZone("UTC") 
     } }
+    
+    val chartData = remember(history) {
+        val result = mutableListOf<DeviceHistoryDTO?>()
+        for (i in history.indices) {
+            if (i > 0) {
+                try {
+                    val prevStr = history[i-1].recordedAt.substringBefore(".").removeSuffix("Z")
+                    val currStr = history[i].recordedAt.substringBefore(".").removeSuffix("Z")
+                    val prevTime = isoFormatter.parse(prevStr)?.time ?: 0L
+                    val currTime = isoFormatter.parse(currStr)?.time ?: 0L
+                    if (currTime - prevTime > 15 * 60 * 1000) {
+                        result.add(null) // Insert gap
+                    }
+                } catch (e: Exception) {}
+            }
+            result.add(history[i])
+        }
+        result
+    }
+
+    val powerChartEntryModel = remember(chartData) {
+        if (chartData.isEmpty()) return@remember entryModelOf(0f)
+        val entries = chartData.mapIndexed { index, dto ->
+            FloatEntry(x = index.toFloat(), y = dto?.solarPower?.toFloat() ?: Float.NaN)
+        }
+        entryModelOf(entries)
+    }
+    
+    val tempChartEntryModel = remember(chartData) {
+        if (chartData.isEmpty()) return@remember entryModelOf(0f)
+        val entries = chartData.mapIndexed { index, dto ->
+            FloatEntry(x = index.toFloat(), y = dto?.temperature?.toFloat() ?: Float.NaN)
+        }
+        entryModelOf(entries)
+    }
+
+    val voltageChartEntryModel = remember(chartData) {
+        if (chartData.isEmpty()) return@remember entryModelOf(0f)
+        val entries = chartData.mapIndexed { index, dto ->
+            FloatEntry(x = index.toFloat(), y = dto?.solarVoltage?.toFloat() ?: Float.NaN)
+        }
+        entryModelOf(entries)
+    }
+
+    val currentChartEntryModel = remember(chartData) {
+        if (chartData.isEmpty()) return@remember entryModelOf(0f)
+        val entries = chartData.mapIndexed { index, dto ->
+            FloatEntry(x = index.toFloat(), y = dto?.solarCurrent?.toFloat() ?: Float.NaN)
+        }
+        entryModelOf(entries)
+    }
+
+
     val displayFormatter = remember(selectedRange) {
         if (selectedRange == 0) SimpleDateFormat("HH:mm", Locale.getDefault())
         else SimpleDateFormat("MM/dd", Locale.getDefault())
@@ -221,14 +242,17 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
-                                if (idx in history.indices) {
-                                    val step = maxOf(1, history.size / 5)
-                                    if (idx % step == 0 || idx == history.size - 1) {
-                                        try {
-                                            val cleanStr = history[idx].recordedAt.substringBefore(".").removeSuffix("Z")
-                                            val date = isoFormatter.parse(cleanStr)
-                                            date?.let { displayFormatter.format(it) } ?: ""
-                                        } catch (e: Exception) { "" }
+                                if (idx in chartData.indices) {
+                                    val dto = chartData[idx]
+                                    if (dto != null) {
+                                        val step = maxOf(1, chartData.size / 5)
+                                        if (idx % step == 0 || idx == chartData.size - 1) {
+                                            try {
+                                                val cleanStr = dto.recordedAt.substringBefore(".").removeSuffix("Z")
+                                                val date = isoFormatter.parse(cleanStr)
+                                                date?.let { displayFormatter.format(it) } ?: ""
+                                            } catch (e: Exception) { "" }
+                                        } else ""
                                     } else ""
                                 } else ""
                             }
@@ -279,14 +303,17 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
-                                if (idx in history.indices) {
-                                    val step = maxOf(1, history.size / 5)
-                                    if (idx % step == 0 || idx == history.size - 1) {
-                                        try {
-                                            val cleanStr = history[idx].recordedAt.substringBefore(".").removeSuffix("Z")
-                                            val date = isoFormatter.parse(cleanStr)
-                                            date?.let { displayFormatter.format(it) } ?: ""
-                                        } catch (e: Exception) { "" }
+                                if (idx in chartData.indices) {
+                                    val dto = chartData[idx]
+                                    if (dto != null) {
+                                        val step = maxOf(1, chartData.size / 5)
+                                        if (idx % step == 0 || idx == chartData.size - 1) {
+                                            try {
+                                                val cleanStr = dto.recordedAt.substringBefore(".").removeSuffix("Z")
+                                                val date = isoFormatter.parse(cleanStr)
+                                                date?.let { displayFormatter.format(it) } ?: ""
+                                            } catch (e: Exception) { "" }
+                                        } else ""
                                     } else ""
                                 } else ""
                             }
@@ -337,14 +364,17 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
-                                if (idx in history.indices) {
-                                    val step = maxOf(1, history.size / 5)
-                                    if (idx % step == 0 || idx == history.size - 1) {
-                                        try {
-                                            val cleanStr = history[idx].recordedAt.substringBefore(".").removeSuffix("Z")
-                                            val date = isoFormatter.parse(cleanStr)
-                                            date?.let { displayFormatter.format(it) } ?: ""
-                                        } catch (e: Exception) { "" }
+                                if (idx in chartData.indices) {
+                                    val dto = chartData[idx]
+                                    if (dto != null) {
+                                        val step = maxOf(1, chartData.size / 5)
+                                        if (idx % step == 0 || idx == chartData.size - 1) {
+                                            try {
+                                                val cleanStr = dto.recordedAt.substringBefore(".").removeSuffix("Z")
+                                                val date = isoFormatter.parse(cleanStr)
+                                                date?.let { displayFormatter.format(it) } ?: ""
+                                            } catch (e: Exception) { "" }
+                                        } else ""
                                     } else ""
                                 } else ""
                             }
@@ -395,14 +425,17 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
-                                if (idx in history.indices) {
-                                    val step = maxOf(1, history.size / 5)
-                                    if (idx % step == 0 || idx == history.size - 1) {
-                                        try {
-                                            val cleanStr = history[idx].recordedAt.substringBefore(".").removeSuffix("Z")
-                                            val date = isoFormatter.parse(cleanStr)
-                                            date?.let { displayFormatter.format(it) } ?: ""
-                                        } catch (e: Exception) { "" }
+                                if (idx in chartData.indices) {
+                                    val dto = chartData[idx]
+                                    if (dto != null) {
+                                        val step = maxOf(1, chartData.size / 5)
+                                        if (idx % step == 0 || idx == chartData.size - 1) {
+                                            try {
+                                                val cleanStr = dto.recordedAt.substringBefore(".").removeSuffix("Z")
+                                                val date = isoFormatter.parse(cleanStr)
+                                                date?.let { displayFormatter.format(it) } ?: ""
+                                            } catch (e: Exception) { "" }
+                                        } else ""
                                     } else ""
                                 } else ""
                             }
