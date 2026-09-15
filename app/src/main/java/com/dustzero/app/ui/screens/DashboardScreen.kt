@@ -294,8 +294,8 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             MetricCard(
-                title = "Solar Power",
-                value = if (isOnline) "%.2f".format(maxOf(0.0, sensorData.solarPower)) else "—",
+                title = "POWER",
+                value = if (isOnline) "%.4f".format(maxOf(0.0, sensorData.solarPower)) else "—",
                 unit = "W",
                 icon = Icons.Rounded.WbSunny,
                 iconTint = WarningAmber,

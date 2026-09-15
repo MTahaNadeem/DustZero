@@ -263,7 +263,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                             ) {
                                 InfoRow("Sunlight Level", sensorData.sunlightLevel)
                                 InfoRow("Rain Sensor", if (sensorData.rainDetected) "Detected" else "Clear")
-                                InfoRow("Solar Power", "%.3fW (threshold: 0.050W)".format(sensorData.solarPower))
+                                InfoRow("Solar Power", "%.4fW (threshold: 0.050W)".format(sensorData.solarPower))
                             }
                             
                             Spacer(modifier = Modifier.height(12.dp))

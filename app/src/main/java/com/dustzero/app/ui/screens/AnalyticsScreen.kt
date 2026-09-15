@@ -316,14 +316,14 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                 SummaryCard(
                     modifier = Modifier.weight(1f),
                     title = "Avg Power",
-                    value = String.format(Locale.US, "%.1f W", avgPower),
+                    value = String.format(Locale.US, "%.4f W", avgPower),
                     caption = "Mean over range",
                     iconTint = WarningAmber
                 )
                 SummaryCard(
                     modifier = Modifier.weight(1f),
                     title = "Peak Power",
-                    value = String.format(Locale.US, "%.1f W", peakPower),
+                    value = String.format(Locale.US, "%.4f W", peakPower),
                     caption = "Highest recorded",
                     iconTint = WarningAmber
                 )
@@ -368,7 +368,7 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                         )
                         Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(8.dp)) {
                             Text(
-                                "Now: ${String.format(Locale.US, "%.2f", sensorData.solarPower.coerceAtLeast(0.0))}W",
+                                "Now: ${String.format(Locale.US, "%.4f", sensorData.solarPower.coerceAtLeast(0.0))}W",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
