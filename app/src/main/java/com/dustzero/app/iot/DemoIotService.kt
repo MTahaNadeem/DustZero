@@ -228,7 +228,7 @@ class DemoIotService(private val dao: AppDao) : IotService {
                     timeZone = java.util.TimeZone.getTimeZone("UTC")
                 }.format(time)
                 list.add(DeviceHistoryDTO(
-                    deviceId = AppConstants.DEVICE_ID,
+                    deviceId = AppConstants.DEFAULT_DEVICE_ID,
                     recordedAt = iso,
                     solarPower = 0.05 + (i * 0.01),
                     solarVoltage = 0.8 + (i * 0.01),
@@ -243,5 +243,13 @@ class DemoIotService(private val dao: AppDao) : IotService {
     override suspend fun refreshConnection(): Boolean {
         delay(1000)
         return _sensorData.value.isOnline
+    }
+
+    /**
+     * No-op in demo mode — the demo service always streams the same simulated
+     * device data regardless of which device_id is selected.
+     */
+    override fun switchDevice(deviceId: String) {
+        // Demo mode: no real Realtime subscription to switch
     }
 }

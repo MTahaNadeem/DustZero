@@ -27,6 +27,7 @@ import com.dustzero.app.ui.screens.SettingsScreen
 import com.dustzero.app.ui.screens.SplashScreen
 import com.dustzero.app.ui.auth.LoginScreen
 import com.dustzero.app.ui.auth.SignUpScreen
+import com.dustzero.app.ui.auth.ForgotPasswordScreen
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -34,18 +35,20 @@ fun AppNavigation(viewModel: MainViewModel) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: "dashboard"
-    
+
     val unreadAlertsCount by viewModel.unreadAlertsCount.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
 
     // Redirect to login if user is null and we aren't in splash or auth flows
-    if (currentUser == null && currentRoute != "splash" && currentRoute != "login" && currentRoute != "signup") {
+    if (currentUser == null && currentRoute != "splash" && currentRoute != "login"
+        && currentRoute != "signup" && currentRoute != "forgot_password") {
         androidx.compose.runtime.LaunchedEffect(Unit) {
             navController.navigate("login") {
                 popUpTo(0) { inclusive = true }
             }
         }
-    } else if (currentUser != null && (currentRoute == "login" || currentRoute == "signup")) {
+    } else if (currentUser != null && (currentRoute == "login" || currentRoute == "signup"
+                || currentRoute == "forgot_password")) {
         androidx.compose.runtime.LaunchedEffect(Unit) {
             navController.navigate("dashboard") {
                 popUpTo(0) { inclusive = true }
@@ -55,7 +58,8 @@ fun AppNavigation(viewModel: MainViewModel) {
 
     Scaffold(
         bottomBar = {
-            if (currentRoute != "splash" && currentRoute != "login" && currentRoute != "signup") {
+            if (currentRoute != "splash" && currentRoute != "login"
+                && currentRoute != "signup" && currentRoute != "forgot_password") {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 8.dp
@@ -126,15 +130,17 @@ fun AppNavigation(viewModel: MainViewModel) {
                             restoreState = true
                         }
                     },
-                    icon = { 
+                    icon = {
                         BadgedBox(
                             badge = {
                                 if (unreadAlertsCount > 0) {
-                                    Badge(containerColor = MaterialTheme.colorScheme.error) { Text(unreadAlertsCount.toString(), color = Color.White) }
+                                    Badge(containerColor = MaterialTheme.colorScheme.error) {
+                                        Text(unreadAlertsCount.toString(), color = Color.White)
+                                    }
                                 }
                             }
                         ) {
-                            Icon(Icons.Rounded.Notifications, contentDescription = "Alerts") 
+                            Icon(Icons.Rounded.Notifications, contentDescription = "Alerts")
                         }
                     },
                     label = { Text("Alerts") },
@@ -174,7 +180,7 @@ fun AppNavigation(viewModel: MainViewModel) {
             startDestination = "splash",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("splash") { 
+            composable("splash") {
                 SplashScreen(onSplashComplete = {
                     val dest = if (viewModel.currentUser.value == null) "login" else "dashboard"
                     navController.navigate(dest) {
@@ -185,7 +191,8 @@ fun AppNavigation(viewModel: MainViewModel) {
             composable("login") {
                 LoginScreen(
                     viewModel = viewModel,
-                    onNavigateToSignUp = { navController.navigate("signup") }
+                    onNavigateToSignUp = { navController.navigate("signup") },
+                    onNavigateToForgotPassword = { navController.navigate("forgot_password") }
                 )
             }
             composable("signup") {
@@ -194,7 +201,24 @@ fun AppNavigation(viewModel: MainViewModel) {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
-            composable("dashboard") { DashboardScreen(viewModel) }
+            composable("forgot_password") {
+                ForgotPasswordScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable("dashboard") {
+                DashboardScreen(
+                    viewModel = viewModel,
+                    onNavigateToSettings = {
+                        navController.navigate("settings") {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
+            }
             composable("analytics") { AnalyticsScreen(viewModel) }
             composable("cleaning") { CleaningScreen(viewModel) }
             composable("alerts") { AlertsScreen(viewModel) }

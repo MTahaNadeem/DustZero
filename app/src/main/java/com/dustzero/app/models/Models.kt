@@ -15,7 +15,7 @@ package com.dustzero.app.models
  * This guards against stale `connected` values when the ESP32 loses power ungracefully.
  */
 data class SensorData(
-    val deviceId: String = AppConstants.DEVICE_ID,
+    val deviceId: String = "",
     val connected: Boolean = true,
     val ldr1: Int = 47,
     val ldr2: Int = 71,

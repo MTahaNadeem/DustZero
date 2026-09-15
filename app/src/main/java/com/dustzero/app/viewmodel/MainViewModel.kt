@@ -3,6 +3,10 @@ package com.dustzero.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dustzero.app.data.AppDao
+import com.dustzero.app.data.ClaimResult
+import com.dustzero.app.data.DevicePreferences
+import com.dustzero.app.data.DeviceRepository
+import com.dustzero.app.data.DeviceSummary
 import com.dustzero.app.data.ThemeMode
 import com.dustzero.app.data.ThemePreferences
 import com.dustzero.app.iot.IotService
@@ -22,7 +26,9 @@ class MainViewModel(
     private val iotService: IotService,
     private val dao: AppDao,
     private val themePreferences: ThemePreferences,
-    val authRepository: AuthRepository
+    val authRepository: AuthRepository,
+    private val devicePreferences: DevicePreferences,
+    private val deviceRepository: DeviceRepository
 ) : ViewModel() {
 
     val themeMode = themePreferences.themeMode
@@ -37,12 +43,80 @@ class MainViewModel(
 
     val currentUser = authRepository.currentUser
 
+    // ─── Active Device ────────────────────────────────────────────────────────
+
+    /** The currently selected device_id. Null = no device selected yet. */
+    val activeDeviceId: StateFlow<String?> = devicePreferences.activeDeviceId
+
+    // ─── Owned Device List ────────────────────────────────────────────────────
+
+    private val _ownedDevices = MutableStateFlow<List<DeviceSummary>>(emptyList())
+    val ownedDevices: StateFlow<List<DeviceSummary>> = _ownedDevices.asStateFlow()
+
+    private val _deviceListLoading = MutableStateFlow(false)
+    val deviceListLoading: StateFlow<Boolean> = _deviceListLoading.asStateFlow()
+
+    private val _deviceListError = MutableStateFlow<String?>(null)
+    val deviceListError: StateFlow<String?> = _deviceListError.asStateFlow()
+
+    /** Fetches the list of devices owned by the current user from Supabase. */
+    fun loadOwnedDevices() {
+        viewModelScope.launch {
+            _deviceListLoading.value = true
+            _deviceListError.value = null
+            try {
+                _ownedDevices.value = deviceRepository.getOwnedDevices()
+            } catch (e: Exception) {
+                _deviceListError.value = "Could not load devices: ${e.message}"
+            } finally {
+                _deviceListLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Switches to the device with [deviceId] as the active device.
+     * Persists the selection and triggers an immediate Realtime subscription switch.
+     */
+    fun selectDevice(deviceId: String) {
+        devicePreferences.setActiveDevice(deviceId)
+        iotService.switchDevice(deviceId)
+    }
+
+    /**
+     * Claims the device with [deviceId] for the current user (or switches to it if already owned).
+     * On success: saves it as the active device, switches Realtime subscription, refreshes device list.
+     * [onResult] is called on the main thread with the final [ClaimResult].
+     */
+    fun claimDevice(deviceId: String, onResult: (ClaimResult) -> Unit) {
+        viewModelScope.launch {
+            val result = deviceRepository.claimDevice(deviceId)
+            if (result is ClaimResult.Success || result is ClaimResult.AlreadyOwned) {
+                // Select the newly claimed / confirmed device
+                selectDevice(deviceId)
+                // Refresh the owned devices list so dropdown includes it
+                loadOwnedDevices()
+            }
+            onResult(result)
+        }
+    }
+
+    /**
+     * Signs out the current user, clears the active device selection, and resets state.
+     */
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
+            devicePreferences.clearActiveDevice()
+            _ownedDevices.value = emptyList()
+        }
+    }
+
     // ─── Derived device state ─────────────────────────────────────────────────
 
     /**
      * True when the device is genuinely reachable: connected==true AND
      * updated_at heartbeat is fresh (within HEARTBEAT_TIMEOUT_MS).
-     * Prefer this over sensorData.connected for UI online/offline decisions.
      */
     val isDeviceOnline = sensorData.map { it.isOnline }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -72,7 +146,7 @@ class MainViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "OPTIMAL")
 
     // ─── Efficiency (Mock logic) ──────────────────────────────────────────────
-    
+
     val baselineExists = MutableStateFlow(true)
     val panelEfficiency = MutableStateFlow(78)
 
@@ -107,7 +181,6 @@ class MainViewModel(
             iotService.stopCleaning()
         }
     }
-
 
     fun updateConfig(config: ThresholdConfig) {
         iotService.updateConfig(config)

@@ -1,6 +1,5 @@
 package com.dustzero.app.iot
 
-import com.dustzero.app.BuildConfig
 import com.dustzero.app.data.AlertEntity
 import com.dustzero.app.data.AppDao
 import com.dustzero.app.models.AppConstants
@@ -8,11 +7,13 @@ import com.dustzero.app.models.SensorData
 import com.dustzero.app.models.ThresholdConfig
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.RealtimeChannel
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.decodeRecordOrNull
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,11 @@ import java.util.TimeZone
  *   `updated_at` on every sensor write; if it crashes without clearing `connected`,
  *   the heartbeat window will catch it within 30s.
  *
+ * Device switching:
+ *   Call [switchDevice] to change the active device. The existing Realtime channel
+ *   is unsubscribed, sensorData is reset to an offline state, and a new channel is
+ *   subscribed for the new device_id. No stale data leaks from the previous device.
+ *
  * Alert generation:
  *   There is NO `alerts` table in the current Supabase schema. Alerts are generated
  *   client-side by watching state changes in the Realtime subscription and inserting
@@ -44,9 +50,7 @@ import java.util.TimeZone
  *   table in a future schema migration — see generateAlertsForStateChange().
  *
  * Analytics:
- *   There is NO `device_history` table in the current schema. Analytics charts use
- *   mock/static data. A future `device_history` table can be plugged in by adding
- *   a HistoryService that queries that table — no changes needed to this file.
+ *   `device_history` table is queried for analytics charts when a device is selected.
  *
  * Fallback:
  *   If SUPABASE_URL / SUPABASE_KEY are placeholder values (unconfigured), the service
@@ -54,12 +58,17 @@ import java.util.TimeZone
  */
 class SupabaseIotService(
     private val fallbackDemoService: IotService,
-    private val dao: AppDao
+    private val dao: AppDao,
+    initialDeviceId: String?
 ) : IotService {
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
-    private val _sensorData = MutableStateFlow(SensorData())
+    // The currently active device_id. Null = no device selected yet.
+    @Volatile
+    private var currentDeviceId: String? = initialDeviceId
+
+    private val _sensorData = MutableStateFlow(SensorData(deviceId = initialDeviceId ?: ""))
     override val sensorData: StateFlow<SensorData> = _sensorData.asStateFlow()
 
     private val _demoModeEnabled = MutableStateFlow(false)
@@ -68,12 +77,18 @@ class SupabaseIotService(
     override val config: StateFlow<ThresholdConfig> = fallbackDemoService.config
 
     private val isConfigured = SupabaseClientProvider.isConfigured
-
     private val supabase = SupabaseClientProvider.client
+
+    // Tracks the active Realtime channel and subscription job so we can cancel them on switchDevice
+    private var activeChannel: RealtimeChannel? = null
+    private var subscriptionJob: Job? = null
 
     init {
         if (isConfigured) {
-            startRealtimeSubscription()
+            if (currentDeviceId != null) {
+                startRealtimeSubscription(currentDeviceId!!)
+            }
+            // else: no device selected yet — wait for switchDevice() to be called
         } else {
             // Supabase not configured → fall back to Demo Mode automatically
             setDemoMode(true)
@@ -89,53 +104,84 @@ class SupabaseIotService(
         }
     }
 
+    // ─── Device Switching ─────────────────────────────────────────────────────
+
+    /**
+     * Switches the active device.
+     *
+     * 1. Cancels the existing Realtime subscription (no stale data leaks).
+     * 2. Resets sensorData to a clean offline state tagged with the new device_id.
+     * 3. Starts a new Realtime subscription for [deviceId].
+     */
+    override fun switchDevice(deviceId: String) {
+        if (deviceId == currentDeviceId) return // Already on this device
+
+        currentDeviceId = deviceId
+
+        // Cancel previous subscription
+        subscriptionJob?.cancel()
+        subscriptionJob = null
+
+        // Unsubscribe previous channel
+        scope.launch {
+            try { activeChannel?.unsubscribe() } catch (_: Exception) {}
+            activeChannel = null
+        }
+
+        // Reset to clean offline state for the new device
+        _sensorData.value = SensorData(deviceId = deviceId, connected = false, isOnline = false)
+
+        if (isConfigured && !_demoModeEnabled.value) {
+            startRealtimeSubscription(deviceId)
+        }
+    }
+
     // ─── Realtime Subscription ────────────────────────────────────────────────
 
-    private fun startRealtimeSubscription() {
-        scope.launch {
+    private fun startRealtimeSubscription(deviceId: String) {
+        subscriptionJob = scope.launch {
             try {
                 // 1. Initial fetch — populate UI before the first Realtime event fires
-                fetchAndApplyDevice()
+                fetchAndApplyDevice(deviceId)
 
-                // 2. Subscribe to UPDATE events on the devices table.
-                // Note: supabase-kt 3.x PostgresChangeFilter does not expose a public
-                // `filter` property for row-level filtering. We use a device-scoped
-                // channel name and filter by device_id in fetchAndApplyDevice()'s SELECT.
-                val channel = supabase.channel("devices:${AppConstants.DEVICE_ID}")
+                // 2. Subscribe to UPDATE events on the devices table for this device.
+                val channel = supabase.channel("devices:$deviceId")
+                activeChannel = channel
+
                 val changes = channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
                     table = AppConstants.TABLE_DEVICES
                 }
 
                 channel.subscribe()
 
-                // 3. On every Realtime update event, decode the payload directly to avoid an extra network round-trip
+                // 3. On every Realtime update event, decode the payload
                 changes.collect { action ->
-                    if (!_demoModeEnabled.value) {
+                    if (!_demoModeEnabled.value && currentDeviceId == deviceId) {
                         try {
                             val dto = action.decodeRecordOrNull<DeviceDTO>()
-                            if (dto != null) {
+                            // Filter: only accept updates for our currently selected device_id
+                            if (dto != null && dto.deviceId == deviceId) {
                                 val previousData = _sensorData.value
                                 val newData = dtoToSensorData(dto)
                                 _sensorData.value = newData
-                                generateAlertsForStateChange(previousData, newData)
+                                generateAlertsForStateChange(previousData, newData, deviceId)
                             } else {
                                 // Fallback if partial update or decode fails
-                                fetchAndApplyDevice()
+                                fetchAndApplyDevice(deviceId)
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
-                            fetchAndApplyDevice()
+                            fetchAndApplyDevice(deviceId)
                         }
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
                 if (!_demoModeEnabled.value) {
-                    // Surface an offline state so the UI shows "Device Offline"
                     _sensorData.update { it.copy(connected = false, isOnline = false) }
-                    // Store a local alert for the connection loss
                     dao.insertAlert(
                         AlertEntity(
+                            deviceId = deviceId,
                             type = "Connection",
                             severity = "CRITICAL",
                             message = "CLOUD CONNECTION LOST - Unable to reach Supabase. Check internet connectivity."
@@ -147,21 +193,19 @@ class SupabaseIotService(
     }
 
     /**
-     * Fetches the current `devices` row for our device_id and applies it to
-     * [_sensorData], computing [SensorData.isOnline] from the heartbeat.
+     * Fetches the current `devices` row for [deviceId] and applies it to [_sensorData].
      */
-    private suspend fun fetchAndApplyDevice() {
+    private suspend fun fetchAndApplyDevice(deviceId: String) {
         try {
             val dto = supabase.from(AppConstants.TABLE_DEVICES)
-                .select { filter { eq("device_id", AppConstants.DEVICE_ID) } }
+                .select { filter { eq("device_id", deviceId) } }
                 .decodeSingleOrNull<DeviceDTO>()
 
             if (dto != null) {
                 val previousData = _sensorData.value
                 val newData = dtoToSensorData(dto)
                 _sensorData.value = newData
-                // Generate local alerts for any state changes (rain, fault, offline, cycle complete)
-                generateAlertsForStateChange(previousData, newData)
+                generateAlertsForStateChange(previousData, newData, deviceId)
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -210,11 +254,12 @@ class SupabaseIotService(
     // FUTURE: When a `device_alerts` table is added to the schema, replace this
     // function with a Realtime subscription on that table and remove local inserts.
 
-    private fun generateAlertsForStateChange(prev: SensorData, next: SensorData) {
+    private fun generateAlertsForStateChange(prev: SensorData, next: SensorData, deviceId: String) {
         scope.launch {
             // Rain detected (transition: false → true)
             if (!prev.rainDetected && next.rainDetected) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Safety",
                     severity = "WARNING",
                     message = "RAIN DETECTED - Automatic cleaning is temporarily blocked for panel protection."
@@ -223,6 +268,7 @@ class SupabaseIotService(
             // Rain cleared (transition: true → false)
             if (prev.rainDetected && !next.rainDetected) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Safety",
                     severity = "INFO",
                     message = "RAIN CLEARED - Cleaning operations can resume."
@@ -231,6 +277,7 @@ class SupabaseIotService(
             // Fault asserted (false → true)
             if (!prev.fault && next.fault) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Fault",
                     severity = "CRITICAL",
                     message = "SYSTEM FAULT - The ESP32 has reported a hardware fault. Manual inspection required."
@@ -239,6 +286,7 @@ class SupabaseIotService(
             // Device went offline
             if (prev.isOnline && !next.isOnline) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Connection",
                     severity = "CRITICAL",
                     message = "DEVICE OFFLINE - ESP32 stopped sending heartbeats. Check Wi-Fi and power."
@@ -247,6 +295,7 @@ class SupabaseIotService(
             // Device came back online
             if (!prev.isOnline && next.isOnline) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Connection",
                     severity = "INFO",
                     message = "DEVICE ONLINE - ESP32 reconnected to cloud."
@@ -256,6 +305,7 @@ class SupabaseIotService(
             if (prev.cleaningState == AppConstants.STATE_MOVING_UP
                 && next.cleaningState == AppConstants.STATE_IDLE) {
                 dao.insertAlert(AlertEntity(
+                    deviceId = deviceId,
                     type = "Cleaning",
                     severity = "INFO",
                     message = "CLEANING COMPLETED - Cleaning cycle completed successfully."
@@ -282,24 +332,24 @@ class SupabaseIotService(
         }
     }
 
-
     /**
      * Inserts a command row into the `commands` table with status = PENDING.
      * The ESP32 firmware polls this table, executes the command, and updates
      * status to ACKNOWLEDGED / COMPLETED / FAILED.
      */
     private suspend fun sendCommand(command: String) {
+        val deviceId = currentDeviceId ?: return
         try {
             val cmd = CommandDTO(
-                deviceId = AppConstants.DEVICE_ID,
+                deviceId = deviceId,
                 command = command,
                 status = "PENDING"
             )
             supabase.from(AppConstants.TABLE_COMMANDS).insert(cmd)
         } catch (e: Exception) {
             e.printStackTrace()
-            // Surface a local alert so the user knows the command failed
             dao.insertAlert(AlertEntity(
+                deviceId = deviceId,
                 type = "Command",
                 severity = "WARNING",
                 message = "COMMAND FAILED - Could not send '$command' to device. Check connectivity."
@@ -313,10 +363,11 @@ class SupabaseIotService(
         _demoModeEnabled.value = enabled
         fallbackDemoService.setDemoMode(enabled)
         if (!enabled && isConfigured) {
-            // Re-fetch real data immediately when exiting demo mode
-            scope.launch { fetchAndApplyDevice() }
+            val deviceId = currentDeviceId
+            if (deviceId != null) {
+                scope.launch { fetchAndApplyDevice(deviceId) }
+            }
         } else if (!enabled && !isConfigured) {
-            // Cannot exit demo mode — Supabase is not configured
             _sensorData.update { it.copy(connected = false, isOnline = false) }
         }
     }
@@ -339,7 +390,6 @@ class SupabaseIotService(
     private fun parseIso8601ToMs(iso: String?): Long {
         if (iso == null) return 0L
         return try {
-            // Try the format Supabase returns for timestamptz: "2026-09-11T14:30:00+00:00"
             val formats = listOf(
                 "yyyy-MM-dd'T'HH:mm:ssXXX",
                 "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
@@ -361,9 +411,9 @@ class SupabaseIotService(
 
     override suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO> {
         if (_demoModeEnabled.value || !isConfigured) return fallbackDemoService.getDeviceHistory(rangeHours)
-        
+        val deviceId = currentDeviceId ?: return emptyList()
+
         return try {
-            // Get history from the last `rangeHours` hours, ordered by recorded_at ascending
             val now = System.currentTimeMillis()
             val cutoff = now - (rangeHours * 60 * 60 * 1000L)
             val isoCutoff = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
@@ -371,9 +421,9 @@ class SupabaseIotService(
             }.format(cutoff)
 
             supabase.from("device_history")
-                .select { 
-                    filter { 
-                        eq("device_id", AppConstants.DEVICE_ID)
+                .select {
+                    filter {
+                        eq("device_id", deviceId)
                         gte("recorded_at", isoCutoff)
                     }
                     order("recorded_at", io.github.jan.supabase.postgrest.query.Order.ASCENDING)
@@ -387,9 +437,10 @@ class SupabaseIotService(
 
     override suspend fun refreshConnection(): Boolean {
         if (_demoModeEnabled.value || !isConfigured) return fallbackDemoService.refreshConnection()
-        
+        val deviceId = currentDeviceId ?: return false
+
         return try {
-            fetchAndApplyDevice()
+            fetchAndApplyDevice(deviceId)
             _sensorData.value.isOnline
         } catch (e: Exception) {
             e.printStackTrace()

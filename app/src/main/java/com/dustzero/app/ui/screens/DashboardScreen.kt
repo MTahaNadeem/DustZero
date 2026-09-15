@@ -30,7 +30,7 @@ import com.dustzero.app.ui.components.MetricCard
 import com.dustzero.app.ui.components.StatusCard
 
 @Composable
-fun DashboardScreen(viewModel: MainViewModel) {
+fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit = {}) {
     val DangerRed = MaterialTheme.colorScheme.error
     val PrimaryGreen = MaterialTheme.colorScheme.primary
     val WarningAmber = MaterialTheme.colorScheme.tertiary
@@ -39,6 +39,61 @@ fun DashboardScreen(viewModel: MainViewModel) {
     val panelStatus by viewModel.panelStatus.collectAsStateWithLifecycle()
     val isOnline by viewModel.isDeviceOnline.collectAsStateWithLifecycle()
     val hasFault by viewModel.hasFault.collectAsStateWithLifecycle()
+    val activeDeviceId by viewModel.activeDeviceId.collectAsStateWithLifecycle()
+
+    // ─── No Device Selected — Empty State ─────────────────────────────────────
+    if (activeDeviceId == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Rounded.DevicesOther,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(56.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "No Device Connected",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Go to Settings to add or claim your DustZero device to start monitoring.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Button(
+                        onClick = onNavigateToSettings,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Rounded.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Go to Settings", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+        return
+    }
 
     var isStarting by remember { mutableStateOf(false) }
     var showOfflineError by remember { mutableStateOf(false) }

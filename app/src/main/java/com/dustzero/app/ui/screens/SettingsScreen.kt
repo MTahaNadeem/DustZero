@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dustzero.app.data.ClaimResult
 import com.dustzero.app.data.ThemeMode
 import com.dustzero.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
@@ -31,6 +33,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -45,29 +48,44 @@ fun SettingsScreen(viewModel: MainViewModel) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isRefreshing by remember { mutableStateOf(false) }
-    
-    // Local UI state for settings (mock)
+
+    // Local UI state
     var autoCleaning by remember { mutableStateOf(true) }
     var pushAlerts by remember { mutableStateOf(true) }
     var offlineAlerts by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
 
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
-    
+    val activeDeviceId by viewModel.activeDeviceId.collectAsStateWithLifecycle()
+    val ownedDevices by viewModel.ownedDevices.collectAsStateWithLifecycle()
+    val deviceListLoading by viewModel.deviceListLoading.collectAsStateWithLifecycle()
+    val sensorData by viewModel.sensorData.collectAsStateWithLifecycle()
+
+    // ─── Device claim UI state ────────────────────────────────────────────────
+    var claimDeviceInput by remember { mutableStateOf("") }
+    var claimLoading by remember { mutableStateOf(false) }
+    var claimResult by remember { mutableStateOf<String?>(null) }
+    var claimIsError by remember { mutableStateOf(false) }
+
+    // ─── Device dropdown state ────────────────────────────────────────────────
+    var deviceDropdownExpanded by remember { mutableStateOf(false) }
+
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                pushAlerts = true
-            }
-        }
+        onResult = { isGranted -> if (isGranted) { pushAlerts = true } }
     )
 
     var cleaningCooldown by remember { mutableStateOf("30") }
     var cleaningDistance by remember { mutableStateOf("500") }
-    
     var sunlightThreshold by remember { mutableStateOf("200") }
     var powerBaseline by remember { mutableStateOf("0.05") }
+
+    // Load owned devices whenever screen appears
+    LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            viewModel.loadOwnedDevices()
+        }
+    }
 
     if (showAboutDialog) {
         AlertDialog(
@@ -85,9 +103,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showAboutDialog = false }) {
-                    Text("OK")
-                }
+                TextButton(onClick = { showAboutDialog = false }) { Text("OK") }
             }
         )
     }
@@ -119,13 +135,186 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
         }
 
-        SettingsSection(title = "DEVICE") {
-            SettingRowInfo(icon = Icons.Rounded.DeveloperBoard, label = "Device Name", value = "DustZero Cleaning System 01")
-            Spacer(modifier = Modifier.height(12.dp))
-            SettingRowInfo(icon = Icons.Rounded.QrCode, label = "Device ID", value = "dustzero-001")
+        // ─── ACCOUNT Section ─────────────────────────────────────────────────
+        SettingsSection(title = "ACCOUNT") {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Rounded.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Signed in as",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = currentUser?.email ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowInfo(icon = Icons.Rounded.Memory, label = "Firmware Version", value = "1.0.0")
+            SettingRowAction(
+                icon = Icons.AutoMirrored.Rounded.Logout,
+                label = "Sign Out",
+                onClick = { viewModel.signOut() }
+            )
+        }
+
+        // ─── DEVICE CONNECTION Section ────────────────────────────────────────
+        SettingsSection(title = "DEVICE CONNECTION") {
+
+            // ── Select Device Dropdown ────────────────────────────────────────
+            Column(modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                ) {
+                    Icon(
+                        Icons.Rounded.DevicesOther,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Select Device",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (deviceListLoading) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                    }
+                }
+
+                if (ownedDevices.isEmpty() && !deviceListLoading) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Text(
+                            "No devices found. Claim your first device below ↓",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else if (ownedDevices.isNotEmpty()) {
+                    ExposedDropdownMenuBox(
+                        expanded = deviceDropdownExpanded,
+                        onExpandedChange = { deviceDropdownExpanded = !deviceDropdownExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = activeDeviceId ?: "Select a device",
+                            onValueChange = {},
+                            readOnly = true,
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = deviceDropdownExpanded)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = deviceDropdownExpanded,
+                            onDismissRequest = { deviceDropdownExpanded = false }
+                        ) {
+                            ownedDevices.forEach { device ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                Icons.Rounded.DeveloperBoard,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp),
+                                                tint = if (device.deviceId == activeDeviceId)
+                                                    MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(device.deviceId)
+                                        }
+                                    },
+                                    onClick = {
+                                        deviceDropdownExpanded = false
+                                        viewModel.selectDevice(device.deviceId)
+                                        claimResult = null
+                                    },
+                                    trailingIcon = {
+                                        if (device.deviceId == activeDeviceId) {
+                                            Icon(
+                                                Icons.Rounded.Check,
+                                                contentDescription = "Active",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+
+            // ── Live Device Info ──────────────────────────────────────────────
+            if (activeDeviceId != null) {
+                SettingRowInfo(
+                    icon = Icons.Rounded.QrCode,
+                    label = "Device ID",
+                    value = sensorData.deviceId.ifEmpty { activeDeviceId ?: "—" }
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                SettingRowInfo(
+                    icon = Icons.Rounded.DeveloperBoard,
+                    label = "Device Name",
+                    value = activeDeviceId ?: "—"
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                SettingRowInfo(
+                    icon = Icons.Rounded.Memory,
+                    label = "Firmware Version",
+                    value = "—"
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            }
+
+            // ── Refresh Connection ────────────────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,7 +322,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 OutlinedButton(
-                    onClick = { 
+                    onClick = {
                         if (!isRefreshing) {
                             isRefreshing = true
                             viewModel.refreshConnection { isOnline ->
@@ -148,7 +337,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             }
                         }
                     },
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = activeDeviceId != null
                 ) {
                     if (isRefreshing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -161,13 +351,147 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     }
                 }
             }
+
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+
+            // ── Add / Claim New Device ────────────────────────────────────────
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.AddCircleOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "Add / Claim New Device",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = claimDeviceInput,
+                    onValueChange = {
+                        claimDeviceInput = it
+                        claimResult = null
+                    },
+                    label = { Text("Device ID") },
+                    placeholder = { Text("e.g. dustzero-001") },
+                    supportingText = {
+                        Text(
+                            "Enter the exact device ID configured in your ESP32 firmware to claim it.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    singleLine = true,
+                    isError = claimIsError && claimResult != null,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                    )
+                )
+
+                // Claim result message
+                if (claimResult != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Card(
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (claimIsError)
+                                MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            else
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Text(
+                            text = claimResult!!,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (claimIsError)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Button(
+                    onClick = {
+                        val deviceId = claimDeviceInput.trim()
+                        if (deviceId.isBlank()) {
+                            claimResult = "Please enter a device ID."
+                            claimIsError = true
+                            return@Button
+                        }
+                        claimLoading = true
+                        claimResult = null
+                        viewModel.claimDevice(deviceId) { result ->
+                            claimLoading = false
+                            when (result) {
+                                is ClaimResult.Success -> {
+                                    claimResult = "Device claimed and selected successfully!"
+                                    claimIsError = false
+                                    claimDeviceInput = ""
+                                }
+                                is ClaimResult.AlreadyOwned -> {
+                                    claimResult = "Device already in your account — switched to it."
+                                    claimIsError = false
+                                    claimDeviceInput = ""
+                                }
+                                is ClaimResult.NotFound -> {
+                                    claimResult = "No device found with this ID. Check it matches your ESP32 firmware's DEVICE_ID."
+                                    claimIsError = true
+                                }
+                                is ClaimResult.OwnedByOther -> {
+                                    claimResult = "Cannot claim device '${result.deviceId}'. It may be owned by another user."
+                                    claimIsError = true
+                                }
+                                is ClaimResult.Error -> {
+                                    claimResult = result.message
+                                    claimIsError = true
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = !claimLoading
+                ) {
+                    if (claimLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Adding...")
+                    } else {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Add / Switch Device", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
         }
 
+        // ─── DEVICE CALIBRATION ───────────────────────────────────────────────
         SettingsSection(title = "DEVICE CALIBRATION") {
             SettingRowAction(
                 icon = Icons.Rounded.Tune,
                 label = "Calibrate Clean Panel Baseline",
-                onClick = { 
+                onClick = {
                     scope.launch {
                         snackbarHostState.showSnackbar("Baseline calibrated for current sunlight level")
                     }
@@ -175,6 +499,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
         }
 
+        // ─── CLEANING CONFIGURATIONS ──────────────────────────────────────────
         SettingsSection(title = "CLEANING CONFIGURATIONS") {
             Card(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -209,7 +534,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 onValueChange = { cleaningDistance = it }
             )
         }
-        
+
+        // ─── THRESHOLDS ───────────────────────────────────────────────────────
         SettingsSection(title = "THRESHOLDS") {
             SettingRowInput(
                 icon = Icons.Rounded.WbSunny,
@@ -226,20 +552,21 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
         }
 
+        // ─── NOTIFICATIONS ────────────────────────────────────────────────────
         SettingsSection(title = "NOTIFICATIONS") {
             SettingRowSwitch(
                 icon = Icons.Rounded.NotificationsActive,
                 label = "Push Alerts",
                 description = "Get notified of faults and cycle completion",
                 checked = pushAlerts,
-                onCheckedChange = { checked -> 
+                onCheckedChange = { checked ->
                     if (checked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                             return@SettingRowSwitch
                         }
                     }
-                    pushAlerts = checked 
+                    pushAlerts = checked
                 }
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
@@ -252,9 +579,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
         }
 
+        // ─── APPEARANCE ───────────────────────────────────────────────────────
         SettingsSection(title = "APPEARANCE") {
             val currentTheme by viewModel.themeMode.collectAsStateWithLifecycle()
-            
+
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -275,27 +603,22 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         selected = currentTheme == ThemeMode.LIGHT,
                         onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3)
-                    ) {
-                        Text("Light")
-                    }
+                    ) { Text("Light") }
                     SegmentedButton(
                         selected = currentTheme == ThemeMode.DARK,
                         onClick = { viewModel.setThemeMode(ThemeMode.DARK) },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3)
-                    ) {
-                        Text("Dark")
-                    }
+                    ) { Text("Dark") }
                     SegmentedButton(
                         selected = currentTheme == ThemeMode.SYSTEM,
                         onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) },
                         shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3)
-                    ) {
-                        Text("System")
-                    }
+                    ) { Text("System") }
                 }
             }
         }
-        
+
+        // ─── DEVELOPER & DEMO ─────────────────────────────────────────────────
         SettingsSection(title = "DEVELOPER & DEMO") {
             SettingRowSwitch(
                 icon = Icons.Rounded.Science,
@@ -322,29 +645,24 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
             }
         }
-        
+
+        // ─── APP ──────────────────────────────────────────────────────────────
         SettingsSection(title = "APP") {
             SettingRowAction(
-                icon = Icons.Rounded.Info, 
-                label = "About DustZero", 
+                icon = Icons.Rounded.Info,
+                label = "About DustZero",
                 onClick = { showAboutDialog = true }
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = versionName)
-            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
-            SettingRowAction(
-                icon = Icons.Rounded.Logout,
-                label = "Sign Out (${currentUser?.email ?: ""})",
-                onClick = { 
-                    scope.launch { viewModel.authRepository.signOut() } 
-                }
-            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
     }
     }
 }
+
+// ─── Shared Settings Components ───────────────────────────────────────────────
 
 @Composable
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {

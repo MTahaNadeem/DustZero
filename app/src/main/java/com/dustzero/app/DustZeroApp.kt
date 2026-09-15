@@ -1,22 +1,22 @@
 package com.dustzero.app
 
 import android.app.Application
+import com.dustzero.app.iot.SupabaseClientProvider
 
 /**
  * DustZero Application class.
  *
  * Registered in AndroidManifest.xml as the application-level class.
- * Use this class for any one-time global initialization:
- * - Dependency injection setup
- * - Logging configuration
- * - Crash reporting
- * - Global SDK initialization
+ * Initializes the Supabase client with encrypted session storage so that
+ * auth tokens persist across app restarts without touching plain SharedPreferences.
  */
 class DustZeroApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // Add global initialization here in the future.
-        // Example: Timber.plant(Timber.DebugTree())
+
+        // Initialize Supabase with EncryptedSharedPreferences-backed session storage.
+        // Must be called before any SupabaseClientProvider.client access.
+        SupabaseClientProvider.initialize(this)
     }
 }

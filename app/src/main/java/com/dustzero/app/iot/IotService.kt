@@ -17,4 +17,13 @@ interface IotService {
     fun setDemoScenario(scenario: String)
     suspend fun getDeviceHistory(rangeHours: Int): List<DeviceHistoryDTO>
     suspend fun refreshConnection(): Boolean
+
+    /**
+     * Switches the active device. The implementation must:
+     * 1. Cancel any existing Realtime subscription for the previous device_id.
+     * 2. Reset sensor data to a clean offline state.
+     * 3. Start a new Realtime subscription for [deviceId].
+     */
+    fun switchDevice(deviceId: String)
 }
+

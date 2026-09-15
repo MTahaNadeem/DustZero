@@ -10,11 +10,15 @@ object AppConstants {
 
     // ─── Device ──────────────────────────────────────────────────────────────
 
-    /** The device_id used in Supabase and all cloud communication. */
-    const val DEVICE_ID = "dustzero-001"
-
-    /** Human-readable name shown in Settings > Device. */
+    /**
+     * Fallback display name when no device is selected or name is unavailable.
+     * The active device_id is now stored at runtime in DevicePreferences —
+     * it is no longer a compile-time constant.
+     */
     const val DEVICE_NAME = "DustZero Controller"
+
+    /** Default device_id used only for initial demo / fallback display. */
+    const val DEFAULT_DEVICE_ID = "dustzero-001"
 
     // ─── App ─────────────────────────────────────────────────────────────────
 
