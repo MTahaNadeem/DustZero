@@ -44,6 +44,9 @@ fun CleaningScreen(viewModel: MainViewModel) {
     var isStopping by remember { mutableStateOf(false) }
     var showOfflineError by remember { mutableStateOf(false) }
 
+    val manualStatus by viewModel.manualCommandStatus.collectAsStateWithLifecycle()
+    var showManualStartDialog by remember { mutableStateOf(false) }
+
     // Use AppConstants.isActivelyCleaning() to match exact ESP32 schema state values:
     val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
 
@@ -316,42 +319,111 @@ fun CleaningScreen(viewModel: MainViewModel) {
             }
         }
 
-        // ── Action Buttons ───────────────────────────────────────────────────
-        Row(
+        // ── Automatic Cleaning ───────────────────────────────────────────────
+        Card(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
         ) {
-            // START — filled green primary action
-            Button(
-                onClick = { 
-                    if (!canStart) {
-                        showOfflineError = true
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "Automatic Cleaning",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "The system decides when to clean based on sunlight, power output, and weather conditions.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = { 
+                        if (!canStart) {
+                            showOfflineError = true
+                        } else {
+                            showStartDialog = true
+                        }
+                    },
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!canStart) PrimaryGreen.copy(alpha = 0.28f) else PrimaryGreen,
+                        contentColor = if (!canStart) Color.White.copy(alpha = 0.45f) else Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isStarting) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                     } else {
-                        showStartDialog = true
+                        Text(
+                            if (showOfflineError && !canStart) "UNAVAILABLE" else "ENABLE AUTOMATIC CLEANING",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
                     }
-                },
-                enabled = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!canStart) PrimaryGreen.copy(alpha = 0.28f) else PrimaryGreen,
-                    contentColor = if (!canStart) Color.White.copy(alpha = 0.45f) else Color.White
-                ),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                if (isStarting) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                } else {
-                    Text(
-                        if (showOfflineError && !canStart) "UNAVAILABLE" else "ENABLE AUTOMATIC CLEANING",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center
-                    )
                 }
             }
-            // STOP — filled danger action (high-priority red)
+        }
+
+        // ── Manual Cleaning ──────────────────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "Manual Cleaning",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "Start a cleaning cycle manually whenever you want.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = { 
+                        if (!canStart) {
+                            showOfflineError = true
+                        } else {
+                            showManualStartDialog = true
+                        }
+                    },
+                    enabled = true,
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!canStart) MaterialTheme.colorScheme.secondary.copy(alpha = 0.28f) else MaterialTheme.colorScheme.secondary,
+                        contentColor = if (!canStart) Color.White.copy(alpha = 0.45f) else Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    when (manualStatus) {
+                        com.dustzero.app.iot.CommandState.SENDING -> CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                        com.dustzero.app.iot.CommandState.SENT -> Text("WAITING FOR DEVICE...", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        else -> Text(if (showOfflineError && !canStart) "UNAVAILABLE" else "START MANUAL CLEANING", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+                
+                if (manualStatus == com.dustzero.app.iot.CommandState.FAILED || manualStatus == com.dustzero.app.iot.CommandState.TIMED_OUT) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Unable to start cleaning. Try Again.", color = DangerRed, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+
+        // ── Emergency Stop ───────────────────────────────────────────────────
+        if (isCleaning || systemStopped) {
             Button(
                 onClick = { 
                     if (!canStop && !systemStopped) {
@@ -361,9 +433,7 @@ fun CleaningScreen(viewModel: MainViewModel) {
                     }
                 },
                 enabled = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(60.dp),
+                modifier = Modifier.fillMaxWidth().height(60.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (!canStop) DangerRed.copy(alpha = 0.25f) else DangerRed,
                     contentColor = if (!canStop) Color.White.copy(alpha = 0.45f) else Color.White
@@ -374,10 +444,9 @@ fun CleaningScreen(viewModel: MainViewModel) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Text(
-                        if (showOfflineError && !canStop && !systemStopped) "UNAVAILABLE" else "EMERGENCY STOP",
+                        if (showOfflineError && !canStop && !systemStopped) "UNAVAILABLE" else "STOP CLEANING",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center
+                        fontSize = 14.sp
                     )
                 }
             }
@@ -447,12 +516,36 @@ fun CleaningScreen(viewModel: MainViewModel) {
             }
         )
     }
+    
+    if (showManualStartDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualStartDialog = false },
+            title = { Text("Start Manual Cleaning?") },
+            text = { Text("This will start the solar panel cleaning cycle immediately. Make sure the cleaning mechanism is clear and safe to operate.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.startManualCleaning()
+                        showManualStartDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("Start Cleaning")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualStartDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     if (showStopDialog) {
         AlertDialog(
             onDismissRequest = { showStopDialog = false },
-            title = { Text("Emergency Stop?") },
-            text = { Text("This will immediately halt the motor. The system will remain stopped until you enable it again.") },
+            title = { Text("Stop Cleaning?") },
+            text = { Text("Are you sure you want to stop the current cleaning cycle? The system will remain stopped until you enable it again.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -462,12 +555,12 @@ fun CleaningScreen(viewModel: MainViewModel) {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
                 ) {
-                    Text("Stop")
+                    Text("Stop Cleaning")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showStopDialog = false }) {
-                    Text("Cancel")
+                    Text("Continue Cleaning")
                 }
             }
         )

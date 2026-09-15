@@ -98,6 +98,9 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
     var isStarting by remember { mutableStateOf(false) }
     var showOfflineError by remember { mutableStateOf(false) }
 
+    val manualStatus by viewModel.manualCommandStatus.collectAsStateWithLifecycle()
+    var showManualStartDialog by remember { mutableStateOf(false) }
+
     // Derive display values from live sensor data
     val isCleaning = AppConstants.isActivelyCleaning(sensorData.cleaningState)
     val canStart = isOnline && !isCleaning && !sensorData.rainDetected && !hasFault
@@ -386,22 +389,21 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
                             if (!canStart) {
                                 showOfflineError = true
                             } else {
-                                isStarting = true
-                                viewModel.startCleaning()
+                                showManualStartDialog = true
                             }
                         },
-                        enabled = true, // We handle disabled state manually to show errors
+                        enabled = true,
                         modifier = Modifier.weight(1f).height(56.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (!canStart) PrimaryGreen.copy(alpha = 0.3f) else PrimaryGreen,
+                            containerColor = if (!canStart) MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.secondary,
                             contentColor = if (!canStart) Color.White.copy(alpha = 0.5f) else Color.White,
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        if (isStarting) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                        } else {
-                            Text(if (showOfflineError && !canStart) "Unavailable" else "ENABLE AUTOMATIC CLEANING", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                        when (manualStatus) {
+                            com.dustzero.app.iot.CommandState.SENDING -> CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                            com.dustzero.app.iot.CommandState.SENT -> Text("WAITING...", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+                            else -> Text(if (showOfflineError && !canStart) "UNAVAILABLE" else "START MANUAL CLEANING", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         }
                     }
                     Button(
@@ -416,21 +418,47 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("EMERGENCY STOP", fontWeight = FontWeight.Bold)
+                        Text("EMERGENCY STOP", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = if (isCleaning)
                         AppConstants.cleaningStateLabel(sensorData.cleaningState)
+                    else if (manualStatus == com.dustzero.app.iot.CommandState.FAILED)
+                        "Failed to start manual cleaning."
                     else
                         "Armed — waiting for conditions",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (manualStatus == com.dustzero.app.iot.CommandState.FAILED) DangerRed else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+    }
+    
+    if (showManualStartDialog) {
+        AlertDialog(
+            onDismissRequest = { showManualStartDialog = false },
+            title = { Text("Start Manual Cleaning?") },
+            text = { Text("This will start the solar panel cleaning cycle immediately. Make sure the cleaning mechanism is clear and safe to operate.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.startManualCleaning()
+                        showManualStartDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                ) {
+                    Text("Start")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showManualStartDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

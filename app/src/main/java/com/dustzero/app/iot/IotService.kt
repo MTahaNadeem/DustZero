@@ -4,13 +4,19 @@ import com.dustzero.app.models.SensorData
 import com.dustzero.app.models.ThresholdConfig
 import kotlinx.coroutines.flow.StateFlow
 
+enum class CommandState {
+    IDLE, SENDING, SENT, ACKNOWLEDGED, FAILED, TIMED_OUT
+}
+
 interface IotService {
     val sensorData: StateFlow<SensorData>
     val demoModeEnabled: StateFlow<Boolean>
     val config: StateFlow<ThresholdConfig>
+    val manualCommandStatus: StateFlow<CommandState>
 
     fun setDemoMode(enabled: Boolean)
     suspend fun startCleaning()
+    suspend fun startManualCleaning()
     suspend fun stopCleaning()
 
     fun updateConfig(newConfig: ThresholdConfig)

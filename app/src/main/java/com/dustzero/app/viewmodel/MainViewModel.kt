@@ -40,6 +40,7 @@ class MainViewModel(
     val sensorData = iotService.sensorData
     val demoModeEnabled = iotService.demoModeEnabled
     val config = iotService.config
+    val manualCommandStatus = iotService.manualCommandStatus
 
     val currentUser = authRepository.currentUser
 
@@ -172,6 +173,13 @@ class MainViewModel(
         _systemStopped.value = false
         viewModelScope.launch {
             iotService.startCleaning()
+        }
+    }
+
+    fun startManualCleaning() {
+        _systemStopped.value = false
+        viewModelScope.launch {
+            iotService.startManualCleaning()
         }
     }
 

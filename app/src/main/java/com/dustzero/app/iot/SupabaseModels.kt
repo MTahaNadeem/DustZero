@@ -43,9 +43,11 @@ data class DeviceDTO(
  */
 @Serializable
 data class CommandDTO(
+    val id: String? = null,
     @SerialName("device_id") val deviceId: String,
     val command: String,
-    val status: String = "PENDING"
+    val status: String = "PENDING",
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 /**

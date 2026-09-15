@@ -74,6 +74,9 @@ class SupabaseIotService(
     private val _demoModeEnabled = MutableStateFlow(false)
     override val demoModeEnabled: StateFlow<Boolean> = _demoModeEnabled.asStateFlow()
 
+    private val _manualCommandStatus = MutableStateFlow(CommandState.IDLE)
+    override val manualCommandStatus: StateFlow<CommandState> = _manualCommandStatus.asStateFlow()
+
     override val config: StateFlow<ThresholdConfig> = fallbackDemoService.config
 
     private val isConfigured = SupabaseClientProvider.isConfigured
@@ -152,26 +155,58 @@ class SupabaseIotService(
                     table = AppConstants.TABLE_DEVICES
                 }
 
+                val commandsChanges = channel.postgresChangeFlow<PostgresAction.Update>(schema = "public") {
+                    table = AppConstants.TABLE_COMMANDS
+                }
+
                 channel.subscribe()
 
-                // 3. On every Realtime update event, decode the payload
-                changes.collect { action ->
-                    if (!_demoModeEnabled.value && currentDeviceId == deviceId) {
-                        try {
-                            val dto = action.decodeRecordOrNull<DeviceDTO>()
-                            // Filter: only accept updates for our currently selected device_id
-                            if (dto != null && dto.deviceId == deviceId) {
-                                val previousData = _sensorData.value
-                                val newData = dtoToSensorData(dto)
-                                _sensorData.value = newData
-                                generateAlertsForStateChange(previousData, newData, deviceId)
-                            } else {
-                                // Fallback if partial update or decode fails
+                // 3. On every Realtime update event for devices, decode the payload
+                launch {
+                    changes.collect { action ->
+                        if (!_demoModeEnabled.value && currentDeviceId == deviceId) {
+                            try {
+                                val dto = action.decodeRecordOrNull<DeviceDTO>()
+                                // Filter: only accept updates for our currently selected device_id
+                                if (dto != null && dto.deviceId == deviceId) {
+                                    val previousData = _sensorData.value
+                                    val newData = dtoToSensorData(dto)
+                                    _sensorData.value = newData
+                                    generateAlertsForStateChange(previousData, newData, deviceId)
+                                    
+                                    // If cleaning started, update manual command status
+                                    if (AppConstants.isActivelyCleaning(newData.cleaningState)) {
+                                        if (_manualCommandStatus.value == CommandState.SENT || _manualCommandStatus.value == CommandState.ACKNOWLEDGED) {
+                                            _manualCommandStatus.value = CommandState.IDLE // Reset once active
+                                        }
+                                    }
+                                } else {
+                                    // Fallback if partial update or decode fails
+                                    fetchAndApplyDevice(deviceId)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
                                 fetchAndApplyDevice(deviceId)
                             }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            fetchAndApplyDevice(deviceId)
+                        }
+                    }
+                }
+
+                // 4. On every Realtime update event for commands
+                launch {
+                    commandsChanges.collect { action ->
+                        if (!_demoModeEnabled.value && currentDeviceId == deviceId) {
+                            try {
+                                val dto = action.decodeRecordOrNull<CommandDTO>()
+                                if (dto != null && dto.deviceId == deviceId && dto.command == AppConstants.CMD_START_MANUAL_CLEANING) {
+                                    when (dto.status) {
+                                        "ACKNOWLEDGED", "COMPLETED" -> _manualCommandStatus.value = CommandState.ACKNOWLEDGED
+                                        "FAILED" -> _manualCommandStatus.value = CommandState.FAILED
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
                         }
                     }
                 }
@@ -332,20 +367,41 @@ class SupabaseIotService(
         }
     }
 
+    override suspend fun startManualCleaning() {
+        if (_demoModeEnabled.value || !isConfigured) {
+            fallbackDemoService.startManualCleaning()
+        } else {
+            _manualCommandStatus.value = CommandState.SENDING
+            val success = sendCommand(AppConstants.CMD_START_MANUAL_CLEANING)
+            if (success) {
+                _manualCommandStatus.value = CommandState.SENT
+                scope.launch {
+                    kotlinx.coroutines.delay(15000)
+                    if (_manualCommandStatus.value == CommandState.SENT) {
+                        _manualCommandStatus.value = CommandState.TIMED_OUT
+                    }
+                }
+            } else {
+                _manualCommandStatus.value = CommandState.FAILED
+            }
+        }
+    }
+
     /**
      * Inserts a command row into the `commands` table with status = PENDING.
      * The ESP32 firmware polls this table, executes the command, and updates
      * status to ACKNOWLEDGED / COMPLETED / FAILED.
      */
-    private suspend fun sendCommand(command: String) {
-        val deviceId = currentDeviceId ?: return
-        try {
+    private suspend fun sendCommand(command: String): Boolean {
+        val deviceId = currentDeviceId ?: return false
+        return try {
             val cmd = CommandDTO(
                 deviceId = deviceId,
                 command = command,
                 status = "PENDING"
             )
             supabase.from(AppConstants.TABLE_COMMANDS).insert(cmd)
+            true
         } catch (e: Exception) {
             e.printStackTrace()
             dao.insertAlert(AlertEntity(
@@ -354,6 +410,7 @@ class SupabaseIotService(
                 severity = "WARNING",
                 message = "COMMAND FAILED - Could not send '$command' to device. Check connectivity."
             ))
+            false
         }
     }
 

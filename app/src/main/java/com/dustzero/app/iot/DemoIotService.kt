@@ -33,6 +33,9 @@ class DemoIotService(private val dao: AppDao) : IotService {
     private val _demoModeEnabled = MutableStateFlow(true)
     override val demoModeEnabled: StateFlow<Boolean> = _demoModeEnabled.asStateFlow()
 
+    private val _manualCommandStatus = MutableStateFlow(CommandState.IDLE)
+    override val manualCommandStatus: StateFlow<CommandState> = _manualCommandStatus.asStateFlow()
+
     private val _config = MutableStateFlow(ThresholdConfig())
     override val config: StateFlow<ThresholdConfig> = _config.asStateFlow()
 
@@ -86,6 +89,30 @@ class DemoIotService(private val dao: AppDao) : IotService {
             severity = "INFO",
             message = "CLEANING COMPLETED - Cleaning cycle completed successfully."
         ))
+    }
+
+    override suspend fun startManualCleaning() {
+        if (_sensorData.value.rainDetected) {
+            _manualCommandStatus.value = CommandState.FAILED
+            return
+        }
+        if (AppConstants.isActivelyCleaning(_sensorData.value.cleaningState)) {
+            _manualCommandStatus.value = CommandState.FAILED
+            return
+        }
+
+        _manualCommandStatus.value = CommandState.SENDING
+        delay(500)
+        _manualCommandStatus.value = CommandState.SENT
+        delay(1000)
+        _manualCommandStatus.value = CommandState.ACKNOWLEDGED
+        delay(500)
+        
+        // Let the actual cleaning flow handle the state transitions
+        scope.launch {
+            startCleaning()
+            _manualCommandStatus.value = CommandState.IDLE
+        }
     }
 
     override suspend fun stopCleaning() {

@@ -35,9 +35,8 @@ object AppConstants {
     const val TABLE_COMMANDS = "commands"
 
     // ─── Commands (written to commands table by the app) ──────────────────────
-    // command column values — ESP32 polls and executes these
-
     const val CMD_START_CLEANING = "START_CLEANING"
+    const val CMD_START_MANUAL_CLEANING = "START_MANUAL_CLEANING"
     const val CMD_STOP_CLEANING = "STOP_CLEANING"
 
     // ─── Cleaning States (written by ESP32 firmware to devices.cleaning_state) ─
