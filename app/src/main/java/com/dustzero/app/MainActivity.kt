@@ -13,6 +13,7 @@ import com.dustzero.app.iot.SupabaseIotService
 import com.dustzero.app.ui.AppNavigation
 import com.dustzero.app.ui.theme.AppTheme
 import com.dustzero.app.viewmodel.MainViewModel
+import com.dustzero.app.data.AuthRepository
 
 import com.dustzero.app.data.ThemePreferences
 import androidx.compose.runtime.collectAsState
@@ -22,11 +23,22 @@ import com.dustzero.app.data.ThemeMode
 
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
-    installSplashScreen()
+    val splashScreen = installSplashScreen()
     super.onCreate(savedInstanceState)
     enableEdgeToEdge()
+    
+    var isReady = false
+    lifecycleScope.launch {
+        delay(1500) // Delay to show splash logo, ideally replace with auth check
+        isReady = true
+    }
+    splashScreen.setKeepOnScreenCondition { !isReady }
     
     val database = AppDatabase.getDatabase(this)
     val dao = database.appDao()
@@ -38,8 +50,9 @@ class MainActivity : ComponentActivity() {
     val iotService = SupabaseIotService(demoService, dao)
     
     val themePreferences = ThemePreferences(this)
+    val authRepository = AuthRepository(this)
     
-    val viewModel = MainViewModel(iotService, dao, themePreferences)
+    val viewModel = MainViewModel(iotService, dao, themePreferences, authRepository)
     
     setContent {
       val currentThemeMode by themePreferences.themeMode.collectAsState()

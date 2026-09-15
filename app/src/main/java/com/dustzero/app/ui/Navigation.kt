@@ -25,6 +25,8 @@ import com.dustzero.app.ui.screens.CleaningScreen
 import com.dustzero.app.ui.screens.DashboardScreen
 import com.dustzero.app.ui.screens.SettingsScreen
 import com.dustzero.app.ui.screens.SplashScreen
+import com.dustzero.app.ui.auth.LoginScreen
+import com.dustzero.app.ui.auth.SignUpScreen
 import com.dustzero.app.viewmodel.MainViewModel
 
 @Composable
@@ -34,10 +36,26 @@ fun AppNavigation(viewModel: MainViewModel) {
     val currentRoute = navBackStackEntry?.destination?.route ?: "dashboard"
     
     val unreadAlertsCount by viewModel.unreadAlertsCount.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+
+    // Redirect to login if user is null and we aren't in splash or auth flows
+    if (currentUser == null && currentRoute != "splash" && currentRoute != "login" && currentRoute != "signup") {
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            navController.navigate("login") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    } else if (currentUser != null && (currentRoute == "login" || currentRoute == "signup")) {
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            navController.navigate("dashboard") {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
 
     Scaffold(
         bottomBar = {
-            if (currentRoute != "splash") {
+            if (currentRoute != "splash" && currentRoute != "login" && currentRoute != "signup") {
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface,
                     tonalElevation = 8.dp
@@ -158,10 +176,23 @@ fun AppNavigation(viewModel: MainViewModel) {
         ) {
             composable("splash") { 
                 SplashScreen(onSplashComplete = {
-                    navController.navigate("dashboard") {
+                    val dest = if (viewModel.currentUser.value == null) "login" else "dashboard"
+                    navController.navigate(dest) {
                         popUpTo("splash") { inclusive = true }
                     }
                 })
+            }
+            composable("login") {
+                LoginScreen(
+                    viewModel = viewModel,
+                    onNavigateToSignUp = { navController.navigate("signup") }
+                )
+            }
+            composable("signup") {
+                SignUpScreen(
+                    viewModel = viewModel,
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable("dashboard") { DashboardScreen(viewModel) }
             composable("analytics") { AnalyticsScreen(viewModel) }

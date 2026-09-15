@@ -137,15 +137,22 @@ fun DashboardScreen(viewModel: MainViewModel) {
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isOnline) "Connected · ESP32-S3-001" else "Device Offline",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isOnline)
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    else
-                        DangerRed
-                )
+                Column(horizontalAlignment = Alignment.Start) {
+                    Text(
+                        text = if (isOnline) "Connected · ESP32-S3-001" else "Device Offline",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isOnline) MaterialTheme.colorScheme.onSurfaceVariant else DangerRed
+                    )
+                    if (isOnline) {
+                        val timeSinceUpdate = (System.currentTimeMillis() - sensorData.updatedAtMs) / 1000
+                        Text(
+                            text = "Last updated ${timeSinceUpdate}s ago",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
 
@@ -195,6 +202,36 @@ fun DashboardScreen(viewModel: MainViewModel) {
             color = heroColor,
             description = heroDescription
         )
+        
+        // ── Panel Efficiency ─────────────────────────────────────────────────
+        // (Mock logic until baseline table integration is completed in ViewModel)
+        val efficiencyPct = viewModel.panelEfficiency.collectAsStateWithLifecycle().value
+        val baselineExists = viewModel.baselineExists.collectAsStateWithLifecycle().value
+        
+        Card(
+            modifier = Modifier.fillMaxWidth().alpha(if (isOnline) 1f else 0.5f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Panel Efficiency", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                if (!isOnline) {
+                    Text("—", style = MaterialTheme.typography.bodyLarge)
+                } else if (!baselineExists) {
+                    Text("No baseline calibrated for current sunlight level. Please calibrate in Settings.", style = MaterialTheme.typography.bodyMedium, color = WarningAmber)
+                } else {
+                    val effColor = if (efficiencyPct > 85) PrimaryGreen else if (efficiencyPct > 60) WarningAmber else DangerRed
+                    val effText = if (efficiencyPct > 85) "Optimal" else if (efficiencyPct > 60) "dust likely" else "dust critical"
+                    Text(
+                        text = "${efficiencyPct}% of clean baseline — $effText",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = effColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
 
         // ── Key Metrics — Row 1 ──────────────────────────────────────────────
         Row(
@@ -309,7 +346,7 @@ fun DashboardScreen(viewModel: MainViewModel) {
                         if (isStarting) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                         } else {
-                            Text(if (showOfflineError && !canStart) "Unavailable" else "ENABLE", fontWeight = FontWeight.Bold)
+                            Text(if (showOfflineError && !canStart) "Unavailable" else "ENABLE AUTOMATIC CLEANING", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
                         }
                     }
                     Button(

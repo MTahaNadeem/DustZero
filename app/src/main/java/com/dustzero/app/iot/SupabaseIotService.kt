@@ -6,11 +6,8 @@ import com.dustzero.app.data.AppDao
 import com.dustzero.app.models.AppConstants
 import com.dustzero.app.models.SensorData
 import com.dustzero.app.models.ThresholdConfig
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.decodeRecordOrNull
 import io.github.jan.supabase.realtime.postgresChangeFlow
@@ -70,23 +67,9 @@ class SupabaseIotService(
 
     override val config: StateFlow<ThresholdConfig> = fallbackDemoService.config
 
-    private val supabaseUrl = BuildConfig.SUPABASE_URL
-    private val supabaseKey = BuildConfig.SUPABASE_KEY
+    private val isConfigured = SupabaseClientProvider.isConfigured
 
-    private val isConfigured = supabaseUrl.isNotBlank()
-            && supabaseKey.isNotBlank()
-            && supabaseUrl != "null"
-            && supabaseUrl != "https://xyzcompany.supabase.co"
-
-    private val supabase by lazy {
-        createSupabaseClient(
-            supabaseUrl = supabaseUrl,
-            supabaseKey = supabaseKey
-        ) {
-            install(Postgrest)
-            install(Realtime)
-        }
-    }
+    private val supabase = SupabaseClientProvider.client
 
     init {
         if (isConfigured) {

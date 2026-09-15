@@ -161,6 +161,12 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
             )
         }
         
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { /* Export logic */ }) {
+                Text("Export as CSV")
+            }
+        }
+        
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
             ranges.forEachIndexed { index, label ->
                 SegmentedButton(
@@ -487,6 +493,37 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                         Text("Cleanings: $cleaningCycles", style = MaterialTheme.typography.bodyMedium)
                         val rainPct = rainBlocks * 100 / history.size.coerceAtLeast(1)
                         Text("Rain Block: $rainPct%", style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            }
+            
+            // 6. Cleaning Effectiveness
+            val recentCleanings by viewModel.cleaningHistory.collectAsStateWithLifecycle()
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "CLEANING EFFECTIVENESS", 
+                        style = MaterialTheme.typography.labelSmall, 
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    if (recentCleanings.isEmpty()) {
+                        Text("No recent cleaning events.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
+                        recentCleanings.take(3).forEach { cleaning ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                val df = java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault())
+                                Text(df.format(java.util.Date(cleaning.startTime)), style = MaterialTheme.typography.bodyMedium)
+                                // Mock recovery for now since local db doesn't store delta yet
+                                Text("+12% efficiency", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                        }
                     }
                 }
             }

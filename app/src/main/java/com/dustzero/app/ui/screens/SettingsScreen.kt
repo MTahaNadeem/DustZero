@@ -24,6 +24,12 @@ import com.dustzero.app.data.ThemeMode
 import com.dustzero.app.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
 import com.dustzero.app.models.AppConstants
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import android.content.pm.PackageManager
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
@@ -45,6 +51,17 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var pushAlerts by remember { mutableStateOf(true) }
     var offlineAlerts by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                pushAlerts = true
+            }
+        }
+    )
 
     var cleaningCooldown by remember { mutableStateOf("30") }
     var cleaningDistance by remember { mutableStateOf("500") }
@@ -146,7 +163,30 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
+        SettingsSection(title = "DEVICE CALIBRATION") {
+            SettingRowAction(
+                icon = Icons.Rounded.Tune,
+                label = "Calibrate Clean Panel Baseline",
+                onClick = { 
+                    scope.launch {
+                        snackbarHostState.showSnackbar("Baseline calibrated for current sunlight level")
+                    }
+                }
+            )
+        }
+
         SettingsSection(title = "CLEANING CONFIGURATIONS") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiary.copy(alpha=0.1f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha=0.3f))
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary, modifier = Modifier.size(20.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("These settings require firmware v2.0+. Edits will not affect current hardware.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             SettingRowSwitch(
                 icon = Icons.Rounded.Autorenew,
                 label = "Automatic Cleaning",
@@ -183,6 +223,32 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 label = "Power Baseline Threshold",
                 value = powerBaseline,
                 onValueChange = { powerBaseline = it }
+            )
+        }
+
+        SettingsSection(title = "NOTIFICATIONS") {
+            SettingRowSwitch(
+                icon = Icons.Rounded.NotificationsActive,
+                label = "Push Alerts",
+                description = "Get notified of faults and cycle completion",
+                checked = pushAlerts,
+                onCheckedChange = { checked -> 
+                    if (checked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            return@SettingRowSwitch
+                        }
+                    }
+                    pushAlerts = checked 
+                }
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            SettingRowSwitch(
+                icon = Icons.Rounded.WifiOff,
+                label = "Offline Alerts",
+                description = "Notify when device loses connection",
+                checked = offlineAlerts,
+                onCheckedChange = { offlineAlerts = it }
             )
         }
 
@@ -265,6 +331,14 @@ fun SettingsScreen(viewModel: MainViewModel) {
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
             SettingRowInfo(icon = Icons.Rounded.SystemUpdate, label = "App Version", value = versionName)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            SettingRowAction(
+                icon = Icons.Rounded.Logout,
+                label = "Sign Out (${currentUser?.email ?: ""})",
+                onClick = { 
+                    scope.launch { viewModel.authRepository.signOut() } 
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))

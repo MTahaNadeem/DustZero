@@ -16,11 +16,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.dustzero.app.iot.DeviceHistoryDTO
+import com.dustzero.app.data.AuthRepository
 
 class MainViewModel(
     private val iotService: IotService,
     private val dao: AppDao,
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
+    val authRepository: AuthRepository
 ) : ViewModel() {
 
     val themeMode = themePreferences.themeMode
@@ -32,6 +34,8 @@ class MainViewModel(
     val sensorData = iotService.sensorData
     val demoModeEnabled = iotService.demoModeEnabled
     val config = iotService.config
+
+    val currentUser = authRepository.currentUser
 
     // ─── Derived device state ─────────────────────────────────────────────────
 
@@ -66,6 +70,11 @@ class MainViewModel(
             else -> "OPTIMAL"
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "OPTIMAL")
+
+    // ─── Efficiency (Mock logic) ──────────────────────────────────────────────
+    
+    val baselineExists = MutableStateFlow(true)
+    val panelEfficiency = MutableStateFlow(78)
 
     // ─── Alerts (local Room DB) ────────────────────────────────────────────────
     // NOTE: There is no `alerts` table in Supabase. Alerts are generated

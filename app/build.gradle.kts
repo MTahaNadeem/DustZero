@@ -18,8 +18,8 @@ android {
     applicationId = "com.dustzero.app"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "2.1.3"
+    versionCode = 2
+    versionName = "2.2.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -105,11 +105,14 @@ dependencies {
   implementation(libs.androidx.room.runtime)
   implementation(libs.vico.compose)
   implementation(libs.supabase.postgrest)
+  implementation(libs.supabase.auth)
   implementation(libs.supabase.realtime)
   implementation(libs.ktor.client.okhttp)
   // implementation(libs.coil.compose)
+  implementation(libs.androidx.security.crypto)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
+  implementation(libs.firebase.messaging)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)
 
