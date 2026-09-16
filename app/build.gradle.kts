@@ -151,4 +151,8 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
   implementation("androidx.core:core-splashscreen:1.0.1")
+  
+  // Widget
+  implementation(libs.androidx.glance.appwidget)
+  implementation(libs.androidx.work.runtime.ktx)
 }

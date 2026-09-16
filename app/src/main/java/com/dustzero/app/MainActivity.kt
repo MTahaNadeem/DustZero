@@ -39,6 +39,9 @@ class MainActivity : ComponentActivity() {
         isReady = true
     }
     splashScreen.setKeepOnScreenCondition { !isReady }
+    
+    // Trigger widget update on app open
+    com.dustzero.app.widget.WidgetUpdateWorker.enqueueImmediate(this)
 
     val database = AppDatabase.getDatabase(this)
     val dao = database.appDao()
@@ -51,6 +54,7 @@ class MainActivity : ComponentActivity() {
 
     // Supabase IoT service — initialise with the previously saved device_id (null = no device yet)
     val iotService = SupabaseIotService(
+        context = this.applicationContext,
         fallbackDemoService = demoService,
         dao = dao,
         initialDeviceId = devicePreferences.activeDeviceId.value

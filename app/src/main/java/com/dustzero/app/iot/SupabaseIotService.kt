@@ -57,6 +57,7 @@ import java.util.TimeZone
  *   automatically activates DemoIotService as a fallback.
  */
 class SupabaseIotService(
+    private val context: android.content.Context,
     private val fallbackDemoService: IotService,
     private val dao: AppDao,
     initialDeviceId: String?
@@ -174,6 +175,9 @@ class SupabaseIotService(
                                     _sensorData.value = newData
                                     generateAlertsForStateChange(previousData, newData, deviceId)
                                     
+                                    // Trigger widget update
+                                    com.dustzero.app.widget.WidgetUpdateWorker.enqueueImmediate(context)
+                                    
                                     // If cleaning started, update manual command status
                                     if (AppConstants.isActivelyCleaning(newData.cleaningState)) {
                                         if (_manualCommandStatus.value == CommandState.SENT || _manualCommandStatus.value == CommandState.ACKNOWLEDGED) {
@@ -241,6 +245,9 @@ class SupabaseIotService(
                 val newData = dtoToSensorData(dto)
                 _sensorData.value = newData
                 generateAlertsForStateChange(previousData, newData, deviceId)
+                
+                // Trigger widget update
+                com.dustzero.app.widget.WidgetUpdateWorker.enqueueImmediate(context)
             }
         } catch (e: Exception) {
             e.printStackTrace()
