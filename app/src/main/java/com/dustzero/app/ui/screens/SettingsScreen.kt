@@ -32,6 +32,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +78,40 @@ fun SettingsScreen(viewModel: MainViewModel) {
         onResult = { isGranted -> if (isGranted) { pushAlerts = true } }
     )
 
+    var showPermissionRationaleDialog by remember { mutableStateOf(false) }
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+    
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { permissions ->
+            val granted = permissions.entries.any { it.value }
+            if (granted) {
+                viewModel.fetchCurrentLocation(
+                    onSuccess = { lat, lon ->
+                        viewModel.updateDeviceLocation(lat, lon)
+                        scope.launch { snackbarHostState.showSnackbar("Location detected") }
+                    },
+                    onError = { msg ->
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                    }
+                )
+            } else {
+                val activity = context as? android.app.Activity
+                val shouldShowRationale = activity?.let {
+                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_FINE_LOCATION) ||
+                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_COARSE_LOCATION)
+                } ?: false
+
+                if (!shouldShowRationale) {
+                    // Permanently denied
+                    showPermissionDeniedDialog = true
+                } else {
+                    scope.launch { snackbarHostState.showSnackbar("Location permission is required to automatically detect your location.") }
+                }
+            }
+        }
+    )
+
     var cleaningCooldown by remember { mutableStateOf("30") }
     var cleaningDistance by remember { mutableStateOf("500") }
     var sunlightThreshold by remember { mutableStateOf("200") }
@@ -85,6 +122,43 @@ fun SettingsScreen(viewModel: MainViewModel) {
         if (currentUser != null) {
             viewModel.loadOwnedDevices()
         }
+    }
+
+    if (showPermissionRationaleDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionRationaleDialog = false },
+            title = { Text("Allow Location Access") },
+            text = { Text("Allow DustZero to access your location?\n\nYour location is used to determine the weather near your solar panel. DustZero does not continuously track your location.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionRationaleDialog = false
+                    locationPermissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionRationaleDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Permission Disabled") },
+            text = { Text("Location permission is disabled. Enable it from Android Settings.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDeniedDialog = false
+                    val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = android.net.Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) { Text("Open Settings") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDeniedDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showAboutDialog) {
@@ -265,7 +339,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
                                                 else MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                             Spacer(modifier = Modifier.width(8.dp))
-                                            Text(device.deviceId)
+                                            Text(device.deviceName ?: device.deviceId)
+                                            if (device.deviceName != null) {
+                                                Text(" (${device.deviceId})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            }
                                         }
                                     },
                                     onClick = {
@@ -303,7 +380,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 SettingRowInfo(
                     icon = Icons.Rounded.DeveloperBoard,
                     label = "Device Name",
-                    value = activeDeviceId ?: "—"
+                    value = sensorData.deviceName ?: "—"
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 SettingRowInfo(
@@ -481,6 +558,171 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Add / Switch Device", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
+        
+        // ─── LOCATION & WEATHER ──────────────────────────────────────────────
+        SettingsSection(title = "LOCATION & WEATHER") {
+            var nameInput by remember { mutableStateOf(sensorData.deviceName ?: "") }
+            
+            // Sync input with sensorData when it changes externally
+            LaunchedEffect(sensorData.deviceName) {
+                nameInput = sensorData.deviceName ?: ""
+            }
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Device Identity", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    label = { Text("Device Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        if (nameInput.isNotBlank()) {
+                            viewModel.updateDeviceName(nameInput.trim())
+                            scope.launch { snackbarHostState.showSnackbar("Device name updated successfully") }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = activeDeviceId != null
+                ) {
+                    Text("Save Name")
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+            
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Device Location", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                
+                val lat = sensorData.latitude
+                val lon = sensorData.longitude
+                val hasLocation = lat != null && lon != null
+                
+                val isFetchingLocation by viewModel.isFetchingLocation.collectAsStateWithLifecycle()
+
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (hasLocation) {
+                    Text("Location saved", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Latitude: $lat", style = MaterialTheme.typography.bodyMedium)
+                    Text("Longitude: $lon", style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    Text("Location not set", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Set your device location to enable local weather information.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                var showManualDialog by remember { mutableStateOf(false) }
+                
+                if (showManualDialog) {
+                    var manualLat by remember { mutableStateOf(lat?.toString() ?: "") }
+                    var manualLon by remember { mutableStateOf(lon?.toString() ?: "") }
+                    var latError by remember { mutableStateOf(false) }
+                    var lonError by remember { mutableStateOf(false) }
+                    
+                    AlertDialog(
+                        onDismissRequest = { showManualDialog = false },
+                        title = { Text("Enter Coordinates") },
+                        text = {
+                            Column {
+                                OutlinedTextField(
+                                    value = manualLat,
+                                    onValueChange = { 
+                                        manualLat = it
+                                        val v = it.toDoubleOrNull()
+                                        latError = v == null || v < -90 || v > 90
+                                    },
+                                    label = { Text("Latitude") },
+                                    isError = latError,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    supportingText = { if (latError) Text("Must be between -90 and 90") }
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedTextField(
+                                    value = manualLon,
+                                    onValueChange = { 
+                                        manualLon = it
+                                        val v = it.toDoubleOrNull()
+                                        lonError = v == null || v < -180 || v > 180
+                                    },
+                                    label = { Text("Longitude") },
+                                    isError = lonError,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    supportingText = { if (lonError) Text("Must be between -180 and 180") }
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    val latVal = manualLat.toDoubleOrNull()
+                                    val lonVal = manualLon.toDoubleOrNull()
+                                    if (latVal != null && lonVal != null && latVal in -90.0..90.0 && lonVal in -180.0..180.0) {
+                                        viewModel.updateDeviceLocation(latVal, lonVal)
+                                        scope.launch { snackbarHostState.showSnackbar("Location saved") }
+                                        showManualDialog = false
+                                    }
+                                },
+                                enabled = !latError && !lonError && manualLat.isNotBlank() && manualLon.isNotBlank()
+                            ) { Text("Save Location") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showManualDialog = false }) { Text("Cancel") }
+                        }
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = {
+                            val fineLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                            val coarseLoc = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            if (fineLoc == PackageManager.PERMISSION_GRANTED || coarseLoc == PackageManager.PERMISSION_GRANTED) {
+                                viewModel.fetchCurrentLocation(
+                                    onSuccess = { l, n ->
+                                        viewModel.updateDeviceLocation(l, n)
+                                        scope.launch { snackbarHostState.showSnackbar("Location detected") }
+                                    },
+                                    onError = { msg ->
+                                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                                    }
+                                )
+                            } else {
+                                showPermissionRationaleDialog = true
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = activeDeviceId != null && !isFetchingLocation
+                    ) {
+                        if (isFetchingLocation) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Detecting...")
+                        } else {
+                            Icon(Icons.Rounded.MyLocation, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Use Current")
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { showManualDialog = true },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = activeDeviceId != null
+                    ) {
+                        Text(if (hasLocation) "Update Manually" else "Enter Manually")
                     }
                 }
             }

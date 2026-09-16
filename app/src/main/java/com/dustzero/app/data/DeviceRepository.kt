@@ -13,7 +13,8 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DeviceSummary(
     @SerialName("device_id") val deviceId: String,
-    @SerialName("user_id") val userId: String? = null
+    @SerialName("user_id") val userId: String? = null,
+    @SerialName("device_name") val deviceName: String? = null
 )
 
 // ─── Claim Result ─────────────────────────────────────────────────────────────
@@ -124,6 +125,39 @@ class DeviceRepository {
         } catch (e: Exception) {
             e.printStackTrace()
             ClaimResult.Error(e.message ?: "An unexpected error occurred")
+        }
+    }
+
+    /** Updates the location of a specific device. */
+    suspend fun updateLocation(deviceId: String, lat: Double, lon: Double): Boolean {
+        return try {
+            supabase.from(AppConstants.TABLE_DEVICES)
+                .update({ 
+                    set("latitude", lat)
+                    set("longitude", lon)
+                }) {
+                    filter { eq("device_id", deviceId) }
+                }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    /** Updates the name of a specific device. */
+    suspend fun updateName(deviceId: String, name: String): Boolean {
+        return try {
+            supabase.from(AppConstants.TABLE_DEVICES)
+                .update({ 
+                    set("device_name", name)
+                }) {
+                    filter { eq("device_id", deviceId) }
+                }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 }

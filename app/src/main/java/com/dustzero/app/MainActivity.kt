@@ -17,6 +17,7 @@ import com.dustzero.app.ui.theme.AppTheme
 import com.dustzero.app.viewmodel.MainViewModel
 import com.dustzero.app.data.AuthRepository
 import com.dustzero.app.data.ThemePreferences
+import com.dustzero.app.data.LocationService
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -58,6 +59,8 @@ class MainActivity : ComponentActivity() {
     val themePreferences = ThemePreferences(this)
     val authRepository = AuthRepository(this)
     val deviceRepository = DeviceRepository()
+    val weatherRepository = com.dustzero.app.data.WeatherRepository()
+    val locationService = LocationService(this)
 
     val viewModel = MainViewModel(
         iotService = iotService,
@@ -65,7 +68,9 @@ class MainActivity : ComponentActivity() {
         themePreferences = themePreferences,
         authRepository = authRepository,
         devicePreferences = devicePreferences,
-        deviceRepository = deviceRepository
+        deviceRepository = deviceRepository,
+        weatherRepository = weatherRepository,
+        locationService = locationService
     )
 
     setContent {

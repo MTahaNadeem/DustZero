@@ -261,7 +261,10 @@ class SupabaseIotService(
 
         return SensorData(
             deviceId = dto.deviceId,
+            deviceName = dto.deviceName,
             connected = dto.connected,
+            latitude = dto.latitude,
+            longitude = dto.longitude,
             ldr1 = dto.ldr1,
             ldr2 = dto.ldr2,
             temperature = dto.temperature,

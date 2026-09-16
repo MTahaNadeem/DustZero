@@ -40,6 +40,9 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
     val isOnline by viewModel.isDeviceOnline.collectAsStateWithLifecycle()
     val hasFault by viewModel.hasFault.collectAsStateWithLifecycle()
     val activeDeviceId by viewModel.activeDeviceId.collectAsStateWithLifecycle()
+    val weatherData by viewModel.weatherData.collectAsStateWithLifecycle()
+    val weatherLoading by viewModel.weatherLoading.collectAsStateWithLifecycle()
+    val weatherError by viewModel.weatherError.collectAsStateWithLifecycle()
 
     // ─── No Device Selected — Empty State ─────────────────────────────────────
     if (activeDeviceId == null) {
@@ -109,6 +112,12 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
     LaunchedEffect(isCleaning, hasFault) {
         if (isCleaning || hasFault) {
             isStarting = false
+        }
+    }
+    
+    LaunchedEffect(sensorData.latitude, sensorData.longitude) {
+        if (sensorData.latitude != null && sensorData.longitude != null) {
+            viewModel.fetchWeather(sensorData.latitude!!, sensorData.longitude!!)
         }
     }
 
@@ -285,6 +294,42 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
                         text = "${efficiencyPct}% of clean baseline — $effText",
                         style = MaterialTheme.typography.bodyLarge,
                         color = effColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+        
+        // ── Weather & Cleaning Insights ──────────────────────────────────────
+        Card(
+            modifier = Modifier.fillMaxWidth().alpha(if (isOnline) 1f else 0.5f),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Weather Forecast", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                if (sensorData.latitude == null || sensorData.longitude == null) {
+                    Text("Location not set. Go to Settings to enable weather insights.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (weatherLoading && weatherData == null) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else if (weatherError != null && weatherData == null) {
+                    Text("Weather unavailable", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (weatherData != null) {
+                    val data = weatherData!!
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("${data.current.temp}°C", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(data.current.description.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = data.cleaningInsight,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (data.cleaningInsight.contains("block", ignoreCase = true)) WarningAmber else PrimaryGreen,
                         fontWeight = FontWeight.SemiBold
                     )
                 }

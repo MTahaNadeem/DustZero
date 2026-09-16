@@ -9,6 +9,7 @@ import com.dustzero.app.data.DeviceRepository
 import com.dustzero.app.data.DeviceSummary
 import com.dustzero.app.data.ThemeMode
 import com.dustzero.app.data.ThemePreferences
+import com.dustzero.app.data.WeatherRepository
 import com.dustzero.app.iot.IotService
 import com.dustzero.app.models.AppConstants
 import com.dustzero.app.models.ThresholdConfig
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.dustzero.app.iot.DeviceHistoryDTO
 import com.dustzero.app.data.AuthRepository
+import com.dustzero.app.data.LocationService
 
 class MainViewModel(
     private val iotService: IotService,
@@ -28,7 +30,9 @@ class MainViewModel(
     private val themePreferences: ThemePreferences,
     val authRepository: AuthRepository,
     private val devicePreferences: DevicePreferences,
-    private val deviceRepository: DeviceRepository
+    private val deviceRepository: DeviceRepository,
+    private val weatherRepository: WeatherRepository,
+    private val locationService: LocationService
 ) : ViewModel() {
 
     val themeMode = themePreferences.themeMode
@@ -226,6 +230,74 @@ class MainViewModel(
     fun markAlertRead(alertId: Int) {
         viewModelScope.launch {
             dao.markAlertRead(alertId)
+        }
+    }
+
+    // ─── Weather Forecast ─────────────────────────────────────────────────────
+
+    private val _weatherData = MutableStateFlow<com.dustzero.app.models.WeatherData?>(null)
+    val weatherData: StateFlow<com.dustzero.app.models.WeatherData?> = _weatherData.asStateFlow()
+
+    private val _weatherLoading = MutableStateFlow(false)
+    val weatherLoading: StateFlow<Boolean> = _weatherLoading.asStateFlow()
+
+    private val _weatherError = MutableStateFlow<String?>(null)
+    val weatherError: StateFlow<String?> = _weatherError.asStateFlow()
+
+
+    fun fetchWeather(lat: Double, lon: Double) {
+        viewModelScope.launch {
+            _weatherLoading.value = true
+            _weatherError.value = null
+            val result = weatherRepository.getWeatherInsight(lat, lon)
+            if (result.isSuccess) {
+                _weatherData.value = result.getOrNull()
+            } else {
+                _weatherError.value = result.exceptionOrNull()?.message ?: "Failed to fetch weather"
+            }
+            _weatherLoading.value = false
+        }
+    }
+
+    // ─── Device Settings ──────────────────────────────────────────────────────
+
+    fun updateDeviceLocation(lat: Double, lon: Double) {
+        val deviceId = activeDeviceId.value ?: return
+        viewModelScope.launch {
+            val success = deviceRepository.updateLocation(deviceId, lat, lon)
+            if (success) {
+                // If it succeeds, the Realtime subscription will receive the update 
+                // and push it to sensorData automatically!
+                fetchWeather(lat, lon)
+            }
+        }
+    }
+    
+    private val _isFetchingLocation = MutableStateFlow(false)
+    val isFetchingLocation: StateFlow<Boolean> = _isFetchingLocation.asStateFlow()
+
+    fun fetchCurrentLocation(onSuccess: (Double, Double) -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _isFetchingLocation.value = true
+            val location = locationService.getCurrentLocation()
+            if (location != null) {
+                // Validate limits just in case
+                if (location.latitude in -90.0..90.0 && location.longitude in -180.0..180.0) {
+                    onSuccess(location.latitude, location.longitude)
+                } else {
+                    onError("Received invalid coordinates.")
+                }
+            } else {
+                onError("Unable to determine your location. Please try again.")
+            }
+            _isFetchingLocation.value = false
+        }
+    }
+    
+    fun updateDeviceName(name: String) {
+        val deviceId = activeDeviceId.value ?: return
+        viewModelScope.launch {
+            deviceRepository.updateName(deviceId, name)
         }
     }
 }

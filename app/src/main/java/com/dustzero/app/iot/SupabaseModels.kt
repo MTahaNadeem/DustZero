@@ -16,7 +16,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DeviceDTO(
     @SerialName("device_id") val deviceId: String,
+    @SerialName("device_name") val deviceName: String? = null,
     val connected: Boolean = false,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val ldr1: Int = 0,
     val ldr2: Int = 0,
     val temperature: Double = 0.0,

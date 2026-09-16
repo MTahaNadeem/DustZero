@@ -16,7 +16,10 @@ package com.dustzero.app.models
  */
 data class SensorData(
     val deviceId: String = "",
+    val deviceName: String? = null,
     val connected: Boolean = true,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val ldr1: Int = 47,
     val ldr2: Int = 71,
     val temperature: Double = 38.19,

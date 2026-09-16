@@ -145,11 +145,28 @@ class AuthRepository(private val context: Context) {
             Log.d(TAG, "[CHECK_SESSION] Stored refresh_token present: ${refreshToken != null}")
             if (refreshToken != null) {
                 Log.d(TAG, "[CHECK_SESSION] Calling refreshSession(token)...")
-                supabase.auth.refreshSession(refreshToken)
+                try {
+                    // Try to get the session returned by refreshSession if it returns one
+                    val session = supabase.auth.refreshSession(refreshToken)
+                    
+                    // If supabase-kt doesn't immediately update currentSessionOrNull(), we can try importing it
+                    if (session != null) {
+                        try {
+                            // If session is a string (some versions return string), or if importAuthToken takes string token
+                            supabase.auth.importAuthToken(session.toString())
+                        } catch (e: Exception) {}
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "[CHECK_SESSION] refreshSession failed", e)
+                }
+                
+                // wait a tiny bit for the session status to propagate if it's asynchronous
+                kotlinx.coroutines.delay(100)
+
                 val session = supabase.auth.currentSessionOrNull()
                 if (session != null) {
                     sharedPreferences.edit().putString("refresh_token", session.refreshToken).apply()
-                    Log.d(TAG, "[CHECK_SESSION] Refresh succeeded. User: ${supabase.auth.currentUserOrNull()?.id}")
+                    Log.d(TAG, "[CHECK_SESSION] Refresh succeeded. User: ${session.user?.id}")
                 } else {
                     Log.e(TAG, "[CHECK_SESSION] refreshSession() called but currentSessionOrNull() is still null!")
                 }
