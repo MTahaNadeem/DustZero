@@ -8,6 +8,7 @@ import io.github.jan.supabase.functions.functions
 import io.ktor.client.call.body
 import io.ktor.client.request.parameter
 import io.ktor.http.HttpMethod
+import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -52,9 +53,26 @@ class WeatherRepository {
             cachedWeather = weatherData
             lastFetchTime = now
             Result.success(weatherData)
+        } catch (e: io.ktor.client.plugins.ResponseException) {
+            val status = e.response.status.value
+            Log.d("Weather", "WEATHER: response status = $status")
+            val errorBody = try { kotlinx.coroutines.runBlocking { e.response.bodyAsText() } } catch (_: Exception) { "" }
+            Log.d("Weather", "WEATHER: error body = $errorBody")
+            val errorCategory = when (status) {
+                401 -> "OPENWEATHER_UNAUTHORIZED"
+                429 -> "OPENWEATHER_RATE_LIMIT"
+                400 -> "INVALID_WEATHER_RESPONSE"
+                404 -> "EDGE_FUNCTION_UNAVAILABLE"
+                in 500..599 -> "OPENWEATHER_SERVER_ERROR"
+                else -> "NETWORK_ERROR"
+            }
+            Log.d("Weather", "WEATHER: get-weather returned HTTP $status")
+            Log.d("Weather", "WEATHER: error = $errorCategory")
+            Result.failure(Exception(errorCategory))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch weather insight", e)
-            Result.failure(e)
+            Log.d("Weather", "WEATHER: error = NETWORK_ERROR")
+            Result.failure(Exception("NETWORK_ERROR"))
         }
     }
     

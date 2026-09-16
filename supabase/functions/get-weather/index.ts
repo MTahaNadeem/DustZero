@@ -13,7 +13,11 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { lat, lon } = await req.json();
+    console.log("OPENWEATHER_API_KEY configured:", !!OPENWEATHER_API_KEY);
+
+    const url_obj = new URL(req.url);
+    let lat = url_obj.searchParams.get("lat");
+    let lon = url_obj.searchParams.get("lon");
 
     if (!lat || !lon) {
       return new Response(JSON.stringify({ error: "Missing lat/lon" }), {
@@ -41,31 +45,23 @@ serve(async (req: Request) => {
 
     // Process forecast to generate cleaning insights
     const current = data.list[0];
-    const next3h = data.list[1];
-    const next6h = data.list[2];
     
-    const isRainingNow = current.weather[0].main === 'Rain' || current.weather[0].main === 'Drizzle';
-    const isRainingSoon = (next3h && (next3h.weather[0].main === 'Rain' || next3h.weather[0].main === 'Drizzle')) || 
-                          (next6h && (next6h.weather[0].main === 'Rain' || next6h.weather[0].main === 'Drizzle'));
-                          
-    let cleaning_insight = "Clear skies expected — good cleaning conditions.";
-    if (isRainingNow) {
-        cleaning_insight = "Currently raining — automatic cleaning is blocked.";
-    } else if (isRainingSoon) {
-        cleaning_insight = "Rain expected soon — automatic cleaning will be blocked during rainfall.";
-    }
+    // next 12 hours = next 4 blocks (each is 3 hours)
+    const next_12_hours = data.list.slice(1, 5).map((item: any) => ({
+      dt: item.dt,
+      timestamp: item.dt_txt,
+      temp: item.main.temp,
+      pop: Math.round((item.pop || 0) * 100), // OpenWeather returns pop as 0 to 1
+      conditions: item.weather[0].main
+    }));
 
     const result = {
       current: {
-        condition: current.weather[0].main,
-        description: current.weather[0].description,
         temp: current.main.temp,
+        description: current.weather[0].description,
         icon: current.weather[0].icon
       },
-      forecast: {
-        next3h: next3h ? { condition: next3h.weather[0].main, description: next3h.weather[0].description } : null,
-      },
-      cleaning_insight
+      next_12_hours: next_12_hours
     };
 
     return new Response(JSON.stringify(result), {

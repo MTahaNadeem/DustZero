@@ -116,9 +116,7 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
     }
     
     LaunchedEffect(sensorData.latitude, sensorData.longitude) {
-        if (sensorData.latitude != null && sensorData.longitude != null) {
-            viewModel.fetchWeather(sensorData.latitude!!, sensorData.longitude!!)
-        }
+        viewModel.fetchWeather(sensorData.latitude, sensorData.longitude)
     }
 
     LaunchedEffect(isStarting) {
@@ -310,12 +308,12 @@ fun DashboardScreen(viewModel: MainViewModel, onNavigateToSettings: () -> Unit =
                 Text("Weather Forecast", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                if (sensorData.latitude == null || sensorData.longitude == null) {
-                    Text("Location not set. Go to Settings to enable weather insights.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (weatherError == "LOCATION_NOT_SET") {
+                    Text("Set your device location to see weather.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else if (weatherLoading && weatherData == null) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                 } else if (weatherError != null && weatherData == null) {
-                    Text("Weather unavailable", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Weather forecast unavailable", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else if (weatherData != null) {
                     val data = weatherData!!
                     Row(verticalAlignment = Alignment.CenterVertically) {

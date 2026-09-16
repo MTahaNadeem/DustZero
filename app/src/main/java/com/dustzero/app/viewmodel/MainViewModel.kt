@@ -245,15 +245,28 @@ class MainViewModel(
     val weatherError: StateFlow<String?> = _weatherError.asStateFlow()
 
 
-    fun fetchWeather(lat: Double, lon: Double) {
+    fun fetchWeather(lat: Double?, lon: Double?) {
         viewModelScope.launch {
+            android.util.Log.d("Weather", "WEATHER: Dashboard weather request started")
+            android.util.Log.d("Weather", "WEATHER: latitude = $lat")
+            android.util.Log.d("Weather", "WEATHER: longitude = $lon")
+            
+            if (lat == null || lon == null) {
+                _weatherError.value = "LOCATION_NOT_SET"
+                return@launch
+            }
+
             _weatherLoading.value = true
             _weatherError.value = null
+
+            android.util.Log.d("Weather", "WEATHER: calling get-weather")
             val result = weatherRepository.getWeatherInsight(lat, lon)
             if (result.isSuccess) {
                 _weatherData.value = result.getOrNull()
             } else {
-                _weatherError.value = result.exceptionOrNull()?.message ?: "Failed to fetch weather"
+                val errorMsg = result.exceptionOrNull()?.message ?: "NETWORK_ERROR"
+                _weatherError.value = errorMsg
+                android.util.Log.d("Weather", "WEATHER: error = $errorMsg")
             }
             _weatherLoading.value = false
         }
