@@ -1,6 +1,7 @@
 package com.dustzero.app.data
 
 import android.content.Context
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import io.github.jan.supabase.auth.auth
@@ -10,6 +11,8 @@ import com.dustzero.app.iot.SupabaseClientProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+
+private const val TAG = "DZ_Auth"
 
 // ─── Typed Auth Result ────────────────────────────────────────────────────────
 
@@ -56,8 +59,12 @@ class AuthRepository(private val context: Context) {
     val currentUser: StateFlow<UserInfo?> = _currentUser.asStateFlow()
 
     init {
+        // Only reads in-memory state — always null on cold start (expected)
+        val savedToken = sharedPreferences.getString("refresh_token", null)
+        Log.d(TAG, "[INIT] EncryptedSharedPrefs token present: ${savedToken != null}")
         try {
             _currentUser.value = supabase.auth.currentUserOrNull()
+            Log.d(TAG, "[INIT] In-memory currentUser: ${_currentUser.value?.id}")
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -93,6 +100,9 @@ class AuthRepository(private val context: Context) {
             val session = supabase.auth.currentSessionOrNull()
             if (session != null) {
                 sharedPreferences.edit().putString("refresh_token", session.refreshToken).apply()
+                Log.d(TAG, "[SIGN_IN] Session saved. refresh_token length=${session.refreshToken.length}")
+            } else {
+                Log.e(TAG, "[SIGN_IN] Sign-in succeeded but currentSessionOrNull() returned null!")
             }
             
             AuthResult.Success
@@ -132,20 +142,28 @@ class AuthRepository(private val context: Context) {
     suspend fun checkSession(): Boolean {
         return try {
             val refreshToken = sharedPreferences.getString("refresh_token", null)
+            Log.d(TAG, "[CHECK_SESSION] Stored refresh_token present: ${refreshToken != null}")
             if (refreshToken != null) {
+                Log.d(TAG, "[CHECK_SESSION] Calling refreshSession(token)...")
                 supabase.auth.refreshSession(refreshToken)
                 val session = supabase.auth.currentSessionOrNull()
                 if (session != null) {
                     sharedPreferences.edit().putString("refresh_token", session.refreshToken).apply()
+                    Log.d(TAG, "[CHECK_SESSION] Refresh succeeded. User: ${supabase.auth.currentUserOrNull()?.id}")
+                } else {
+                    Log.e(TAG, "[CHECK_SESSION] refreshSession() called but currentSessionOrNull() is still null!")
                 }
                 _currentUser.value = supabase.auth.currentUserOrNull()
-                _currentUser.value != null
+                val result = _currentUser.value != null
+                Log.d(TAG, "[CHECK_SESSION] Final result: $result")
+                result
             } else {
+                Log.d(TAG, "[CHECK_SESSION] No token in storage — routing to Login")
                 _currentUser.value = null
                 false
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "[CHECK_SESSION] Exception during session restore: ${e.message}", e)
             sharedPreferences.edit().remove("refresh_token").apply()
             _currentUser.value = null
             false

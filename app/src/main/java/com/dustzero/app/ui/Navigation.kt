@@ -38,9 +38,13 @@ fun AppNavigation(viewModel: MainViewModel) {
 
     val unreadAlertsCount by viewModel.unreadAlertsCount.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val sessionCheckComplete by viewModel.sessionCheckComplete.collectAsStateWithLifecycle()
 
-    // Redirect to login if user is null and we aren't in splash or auth flows
-    if (currentUser == null && currentRoute != "splash" && currentRoute != "login"
+    // Only redirect to login AFTER the splash session-check has fully completed.
+    // Before that, currentUser is null simply because the async check hasn't run yet—
+    // NOT because the user is actually unauthenticated. Firing navigate("login") here
+    // before the check is what caused the persistent-login bug.
+    if (sessionCheckComplete && currentUser == null && currentRoute != "splash" && currentRoute != "login"
         && currentRoute != "signup" && currentRoute != "forgot_password") {
         androidx.compose.runtime.LaunchedEffect(Unit) {
             navController.navigate("login") {
@@ -181,7 +185,7 @@ fun AppNavigation(viewModel: MainViewModel) {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("splash") {
-                SplashScreen(onSplashComplete = {
+                SplashScreen(viewModel = viewModel, onSplashComplete = {
                     val dest = if (viewModel.currentUser.value == null) "login" else "dashboard"
                     navController.navigate(dest) {
                         popUpTo("splash") { inclusive = true }

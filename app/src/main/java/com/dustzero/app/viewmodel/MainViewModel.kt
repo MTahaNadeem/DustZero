@@ -44,6 +44,16 @@ class MainViewModel(
 
     val currentUser = authRepository.currentUser
 
+    // True once the initial session check (run during splash) has completed.
+    // Navigation must NOT redirect to Login until this is true.
+    private val _sessionCheckComplete = MutableStateFlow(false)
+    val sessionCheckComplete: StateFlow<Boolean> = _sessionCheckComplete.asStateFlow()
+
+    suspend fun checkAndRestoreSession() {
+        authRepository.checkSession()
+        _sessionCheckComplete.value = true
+    }
+
     // ─── Active Device ────────────────────────────────────────────────────────
 
     /** The currently selected device_id. Null = no device selected yet. */

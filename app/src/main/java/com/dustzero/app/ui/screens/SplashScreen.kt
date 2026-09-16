@@ -17,9 +17,19 @@ import com.dustzero.app.R
 import kotlinx.coroutines.delay
 
 @Composable
-fun SplashScreen(onSplashComplete: () -> Unit) {
+fun SplashScreen(viewModel: com.dustzero.app.viewmodel.MainViewModel, onSplashComplete: () -> Unit) {
     LaunchedEffect(Unit) {
-        delay(1500)
+        val startTime = System.currentTimeMillis()
+        
+        // Wait for session check to complete (also flips viewModel.sessionCheckComplete = true)
+        viewModel.checkAndRestoreSession()
+        
+        // Ensure splash is visible for at least 1.5 seconds
+        val elapsed = System.currentTimeMillis() - startTime
+        if (elapsed < 1500) {
+            delay(1500 - elapsed)
+        }
+        
         onSplashComplete()
     }
 
