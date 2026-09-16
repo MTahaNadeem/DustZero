@@ -10,11 +10,8 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
-import androidx.glance.Image
-import androidx.glance.ImageProvider
-import androidx.glance.LocalContext
 import androidx.glance.LocalSize
-import androidx.glance.unit.ColorProvider
+import androidx.glance.color.ColorProvider
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -29,7 +26,6 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
-import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
@@ -37,7 +33,6 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.dustzero.app.MainActivity
-import com.dustzero.app.R
 import com.dustzero.app.models.AppConstants
 
 class DustZeroWidget : GlanceAppWidget() {
@@ -108,10 +103,11 @@ class DustZeroWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val statusColor = if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336)
                 Box(
                     modifier = GlanceModifier
                         .size(8.dp)
-                        .background(ColorProvider(if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336))) // Material Green/Red
+                        .background(ColorProvider(day = statusColor, night = statusColor)) // Material Green/Red
                 ) {}
                 Spacer(modifier = GlanceModifier.width(4.dp))
                 Text(
@@ -133,7 +129,7 @@ class DustZeroWidget : GlanceAppWidget() {
 
             if (isOnline && power != null) {
                 Text(
-                    text = String.format("%.4f W", power),
+                    text = String.format(java.util.Locale.US, "%.4f W", power),
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
                         fontSize = 20.sp,
@@ -185,10 +181,11 @@ class DustZeroWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val statusColor = if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336)
                 Box(
                     modifier = GlanceModifier
                         .size(8.dp)
-                        .background(ColorProvider(if (isOnline) Color(0xFF4CAF50) else Color(0xFFF44336)))
+                        .background(ColorProvider(day = statusColor, night = statusColor))
                 ) {}
                 Spacer(modifier = GlanceModifier.width(4.dp))
                 Text(
@@ -205,7 +202,7 @@ class DustZeroWidget : GlanceAppWidget() {
                     Text(
                         text = "FAULT",
                         style = TextStyle(
-                            color = ColorProvider(Color(0xFFF44336)),
+                            color = ColorProvider(day = Color(0xFFF44336), night = Color(0xFFF44336)),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -236,7 +233,7 @@ class DustZeroWidget : GlanceAppWidget() {
                         style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp)
                     )
                     Text(
-                        text = if (isOnline && power != null) String.format("%.4f W", power) else "—",
+                        text = if (isOnline && power != null) String.format(java.util.Locale.US, "%.4f W", power) else "—",
                         style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     )
                 }
@@ -248,7 +245,7 @@ class DustZeroWidget : GlanceAppWidget() {
                         style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp)
                     )
                     Text(
-                        text = if (isOnline && voltage != null) String.format("%.2f V", voltage) else "—",
+                        text = if (isOnline && voltage != null) String.format(java.util.Locale.US, "%.2f V", voltage) else "—",
                         style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     )
                 }
@@ -260,7 +257,7 @@ class DustZeroWidget : GlanceAppWidget() {
                         style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 10.sp)
                     )
                     Text(
-                        text = if (isOnline && temperature != null) String.format("%.1f °C", temperature) else "—",
+                        text = if (isOnline && temperature != null) String.format(java.util.Locale.US, "%.1f °C", temperature) else "—",
                         style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     )
                 }
