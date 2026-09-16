@@ -89,6 +89,12 @@ class AuthRepository(private val context: Context) {
                 this.password = password
             }
             _currentUser.value = supabase.auth.currentUserOrNull()
+            
+            val session = supabase.auth.currentSessionOrNull()
+            if (session != null) {
+                sharedPreferences.edit().putString("refresh_token", session.refreshToken).apply()
+            }
+            
             AuthResult.Success
         } catch (e: Exception) {
             e.printStackTrace()
@@ -113,19 +119,34 @@ class AuthRepository(private val context: Context) {
     suspend fun signOut() {
         try {
             supabase.auth.signOut()
+            sharedPreferences.edit().remove("refresh_token").apply()
             _currentUser.value = null
         } catch (e: Exception) {
             e.printStackTrace()
+            // Force local sign out even if network fails
+            sharedPreferences.edit().remove("refresh_token").apply()
+            _currentUser.value = null
         }
     }
 
     suspend fun checkSession(): Boolean {
         return try {
-            supabase.auth.refreshCurrentSession()
-            _currentUser.value = supabase.auth.currentUserOrNull()
-            _currentUser.value != null
+            val refreshToken = sharedPreferences.getString("refresh_token", null)
+            if (refreshToken != null) {
+                supabase.auth.refreshSession(refreshToken)
+                val session = supabase.auth.currentSessionOrNull()
+                if (session != null) {
+                    sharedPreferences.edit().putString("refresh_token", session.refreshToken).apply()
+                }
+                _currentUser.value = supabase.auth.currentUserOrNull()
+                _currentUser.value != null
+            } else {
+                _currentUser.value = null
+                false
+            }
         } catch (e: Exception) {
             e.printStackTrace()
+            sharedPreferences.edit().remove("refresh_token").apply()
             _currentUser.value = null
             false
         }
