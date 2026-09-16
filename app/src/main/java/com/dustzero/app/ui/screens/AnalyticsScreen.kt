@@ -144,8 +144,16 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
     }
 
     val displayFormatter = remember(selectedRange) {
-        if (selectedRange == 0) SimpleDateFormat("HH:mm", Locale.getDefault())
-        else SimpleDateFormat("MM/dd", Locale.getDefault())
+        when (selectedRange) {
+            0 -> SimpleDateFormat("HH:mm", Locale.getDefault())
+            1 -> SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
+            else -> SimpleDateFormat("MM/dd", Locale.getDefault())
+        }
+    }
+
+    val xAxisItemSpacing = remember(selectedRange, chartData.size) {
+        // Aim for roughly 4-6 evenly spaced ticks across the data to show clear progression
+        maxOf(1, chartData.size / 5)
     }
 
     // --- Summaries ---
@@ -395,10 +403,10 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp)
                         ),
                         bottomAxis = rememberBottomAxis(
-                            label = textComponent(color = labelColor, textSize = 10.sp),
+                            label = textComponent(color = labelColor, textSize = 9.sp),
                             axis = lineComponent(color = lineColor, thickness = 1.dp),
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
-                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = maxOf(1, chartData.size / 5)),
+                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = xAxisItemSpacing, addExtremeLabelPadding = true),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
                                 if (idx in chartData.indices) {
@@ -464,10 +472,10 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp)
                         ),
                         bottomAxis = rememberBottomAxis(
-                            label = textComponent(color = labelColor, textSize = 10.sp),
+                            label = textComponent(color = labelColor, textSize = 9.sp),
                             axis = lineComponent(color = lineColor, thickness = 1.dp),
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
-                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = maxOf(1, chartData.size / 5)),
+                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = xAxisItemSpacing, addExtremeLabelPadding = true),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
                                 if (idx in chartData.indices) {
@@ -532,10 +540,10 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp)
                         ),
                         bottomAxis = rememberBottomAxis(
-                            label = textComponent(color = labelColor, textSize = 10.sp),
+                            label = textComponent(color = labelColor, textSize = 9.sp),
                             axis = lineComponent(color = lineColor, thickness = 1.dp),
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
-                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = maxOf(1, chartData.size / 5)),
+                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = xAxisItemSpacing, addExtremeLabelPadding = true),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
                                 if (idx in chartData.indices) {
@@ -600,10 +608,10 @@ fun AnalyticsScreen(viewModel: MainViewModel) {
                             guideline = lineComponent(color = guideColor, thickness = 1.dp)
                         ),
                         bottomAxis = rememberBottomAxis(
-                            label = textComponent(color = labelColor, textSize = 10.sp),
+                            label = textComponent(color = labelColor, textSize = 9.sp),
                             axis = lineComponent(color = lineColor, thickness = 1.dp),
                             guideline = lineComponent(color = guideColor, thickness = 1.dp),
-                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = maxOf(1, chartData.size / 5)),
+                            itemPlacer = AxisItemPlacer.Horizontal.default(spacing = xAxisItemSpacing, addExtremeLabelPadding = true),
                             valueFormatter = { value, _ -> 
                                 val idx = value.toInt()
                                 if (idx in chartData.indices) {
